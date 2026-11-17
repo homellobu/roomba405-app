@@ -73,7 +73,8 @@ def test_index_served(server):
         html = res.read().decode()
         assert res.headers["Content-Type"].startswith("text/html")
     assert "Empezar limpieza" in html
-    assert "ESTADO DE MANTENIMIENTO".lower() in html.lower()
+    assert "Selecciona una habitaci\u00f3n" in html
+    assert "Mantenimiento" in html
     with urllib.request.urlopen(url + "plate.jpg", timeout=5) as res:
         assert res.headers["Content-Type"] == "image/jpeg"
     with urllib.request.urlopen(url + "classic.html", timeout=5) as res:
