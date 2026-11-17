@@ -12,13 +12,18 @@ DOCK_PHASES = {"hmUsrDock", "hmMidMsn", "hmPostMsn", "charge", "evac"}
 
 
 class WebApp:
-    def __init__(self, backend, robot_name: str = "Roomba", host="127.0.0.1", port=0):
+    def __init__(self, backend=None, robot_name: str = "Roomba", host="127.0.0.1", port=0):
         self.backend = backend
+        self.connect_error: str | None = None
         self.robot_name = robot_name
         handler = type("Handler", (_Handler,), {"app": self})
         self._server = ThreadingHTTPServer((host, port), handler)
         host_bound, port_bound = self._server.server_address[:2]
         self.url = f"http://{host_bound}:{port_bound}/"
+
+    def set_backend(self, backend):
+        self.backend = backend
+        self.connect_error = None
 
     def serve_forever(self):
         self._server.serve_forever()
@@ -28,6 +33,8 @@ class WebApp:
         self._server.server_close()
 
     def dock_with_retries(self, attempts=3, wait_per_attempt=25):
+        if self.backend is None:
+            return False
         for _ in range(attempts):
             self.backend.simple("dock")
             deadline = time.time() + wait_per_attempt
@@ -62,6 +69,19 @@ class _Handler(BaseHTTPRequestHandler):
     def _api_error(self, error: Exception):
         self._json(503, {"ok": False, "error": str(error)})
 
+    def _no_backend(self, connecting: bool):
+        if connecting:
+            self._json(200, {"ok": True, "connecting": True,
+                             "robot": self.app.robot_name, "status": {}})
+        else:
+            self._json(503, {"ok": False, "error": "conectando con el robot"})
+
+    def _backend_ready(self):
+        if self.app.backend is not None:
+            return True
+        self._json(503, {"ok": False, "error": "conectando con el robot"})
+        return False
+
     def do_GET(self):
         path = self.path.split("?")[0]
         if path in ("/", "/index.html"):
@@ -79,22 +99,31 @@ class _Handler(BaseHTTPRequestHandler):
             else:
                 self._json(404, {"ok": False, "error": "sin icono"})
         elif path == "/api/status":
+            if self.app.backend is None:
+                self._no_backend(self.app.connect_error is None)
+                return
             try:
                 self._json(200, {"ok": True, "robot": self.app.robot_name,
                                  "status": self.app.backend.get_status()})
             except Exception as e:
                 self._api_error(e)
         elif path == "/api/rooms":
+            if not self._backend_ready():
+                return
             try:
                 self._json(200, {"ok": True, "rooms": self.app.backend.get_rooms()})
             except Exception as e:
                 self._api_error(e)
         elif path == "/api/favorites":
+            if not self._backend_ready():
+                return
             try:
                 self._json(200, {"ok": True, "favorites": self.app.backend.get_favorites()})
             except Exception as e:
                 self._api_error(e)
         elif path == "/api/schedules":
+            if not self._backend_ready():
+                return
             try:
                 self._json(200, {"ok": True, "schedules": self.app.backend.get_schedules()})
             except Exception as e:
@@ -111,6 +140,8 @@ class _Handler(BaseHTTPRequestHandler):
             self._json(400, {"ok": False, "error": "JSON inválido"})
             return
         try:
+            if not self._backend_ready():
+                return
             if path == "/api/command":
                 self.app.backend.simple(body["cmd"])
                 self._json(200, {"ok": True})

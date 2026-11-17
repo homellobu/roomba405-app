@@ -84,15 +84,24 @@ def run():
     log_step(f"robot seleccionado: {robot_name} ({blid})")
 
     backend = PrimeBackend(store.email, store.password, country=country, blid=blid)
-    log_step("conectando con el robot")
-    backend.connect()
-    log_step("conectado")
 
-    app = WebApp(backend, robot_name=robot_name)
+    app = WebApp(robot_name=robot_name)
     log_step(f"servidor listo en {app.url}")
 
     server_thread = threading.Thread(target=app.serve_forever, daemon=True)
     server_thread.start()
+
+    def connect():
+        try:
+            log_step("conectando con el robot")
+            backend.connect()
+            app.set_backend(backend)
+            log_step("conectado")
+        except BaseException:
+            app.connect_error = traceback.format_exc()
+            log_step("fallo al conectar con el robot")
+
+    threading.Thread(target=connect, daemon=True).start()
     open_interface(app)
     backend.close()
 

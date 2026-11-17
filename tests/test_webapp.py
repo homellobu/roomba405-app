@@ -117,3 +117,21 @@ def test_rooms_favorites_schedules(server):
     assert get(url + "api/schedules")["schedules"][0]["time"] == "09:30"
     assert post(url + "api/favorite", {"id": "F1"}) == {"ok": True}
     assert backend.sent == [("favorite", "F1")]
+
+
+def test_connecting_state():
+    app = WebApp(robot_name="Test")
+    thread = __import__("threading").Thread(target=app.serve_forever, daemon=True)
+    thread.start()
+    try:
+        data = get(app.url + "api/status")
+        assert data == {"ok": True, "connecting": True, "robot": "Test", "status": {}}
+        with pytest.raises(urllib.error.HTTPError):
+            post(app.url + "api/command", {"cmd": "pause"})
+        backend = FakeBackend()
+        app.set_backend(backend)
+        data = get(app.url + "api/status")
+        assert data["ok"] is True and "connecting" not in data
+        assert data["status"]["batPct"] == 80
+    finally:
+        app.shutdown()

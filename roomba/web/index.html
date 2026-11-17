@@ -327,6 +327,12 @@ function updateStatus(st) {
 async function refresh() {
   try {
     const data = await api("/api/status");
+    if (data.connecting) {
+      const line = $("statusline");
+      line.className = "";
+      line.textContent = "Conectando con el robot…";
+      return;
+    }
     updateStatus(data.status || {});
   } catch (e) {
     setConn(false);
