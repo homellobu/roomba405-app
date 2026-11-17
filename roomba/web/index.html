@@ -26,8 +26,7 @@
   }
   #stage {
     position: relative;
-    aspect-ratio: 3 / 2;
-    width: min(100vw, 150vh);
+    width: 100vw; height: 100vh;
     background: url("/plate.jpg") 0 0 / 100% 100% no-repeat;
     overflow: hidden;
   }
@@ -101,15 +100,21 @@
   #conn-dot.bad { background: var(--bad); }
   #gear-hotspot {
     position: absolute; right: 3.4%; top: 2.6%; width: 4.5%; height: 6.5%;
-    cursor: pointer; border-radius: 50%;
+    cursor: pointer; border-radius: 50%; z-index: 6;
   }
   #gear-hotspot:hover { background: rgba(255, 255, 255, 0.35); }
   #drawer {
-    position: absolute; top: 0; right: 0; height: 100%; width: 34em;
+    position: absolute; top: 0; right: 0; height: 100%; width: 34em; z-index: 4;
     background: #faf9f2; box-shadow: -0.6em 0 2.4em rgba(50, 55, 35, 0.25);
     transform: translateX(102%); transition: transform .25s ease;
     padding: 1.8em 1.6em; overflow-y: auto; font-size: 1em;
   }
+  #drawer-close {
+    position: absolute; top: 1em; right: 1em; z-index: 5;
+    width: 2.2em; height: 2.2em; border-radius: 50%; border: none; cursor: pointer;
+    background: #efede0; color: var(--text); font-size: 1em; font-family: inherit;
+  }
+  #drawer-close:hover { background: var(--ring); }
   #drawer.open { transform: translateX(0); }
   #drawer h3 { font-size: 1.05em; margin: 1.4em 0 0.5em; color: var(--text); }
   #drawer h3:first-child { margin-top: 0; }
@@ -214,22 +219,10 @@
   <div id="gear-hotspot" title="Ajustes"></div>
 
   <div id="drawer">
+    <button id="drawer-close" title="Cerrar">✕</button>
     <h3>Habitaciones</h3>
     <div class="row">
       <button class="btn-pill" id="btn-load-rooms">↻ Actualizar</button>
-      <select id="suction">
-        <option value="">Succión: por defecto</option>
-        <option value="low">Succión: baja</option>
-        <option value="medium">Succión: media</option>
-        <option value="high">Succión: alta</option>
-        <option value="turbo">Succión: turbo</option>
-      </select>
-      <select id="pad">
-        <option value="">Fregado: por defecto</option>
-        <option value="1">Fregado: bajo</option>
-        <option value="2">Fregado: medio</option>
-        <option value="3">Fregado: alto</option>
-      </select>
     </div>
     <ul id="rooms-list"><li class="empty">Pulsa "Actualizar" para cargar el mapa.</li></ul>
     <div class="row" style="margin-top:0.6em;">
@@ -413,7 +406,17 @@ bindRound("btn-resume", "resume", "Reanudar");
 bindRound("btn-stop", "stop", "Detener");
 bindRound("btn-dock", "dock", "Volver a la base");
 bindRound("btn-find", "find", "Localizar");
-$("gear-hotspot").addEventListener("click", () => $("drawer").classList.toggle("open"));
+$("gear-hotspot").addEventListener("click", (e) => {
+  e.stopPropagation();
+  $("drawer").classList.toggle("open");
+});
+$("drawer-close").addEventListener("click", () => $("drawer").classList.remove("open"));
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") $("drawer").classList.remove("open");
+});
+stage.addEventListener("click", (e) => {
+  if (!$("drawer").contains(e.target)) $("drawer").classList.remove("open");
+});
 
 $("btn-load-rooms").addEventListener("click", async () => {
   try {
