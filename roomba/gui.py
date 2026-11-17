@@ -70,8 +70,8 @@ def pick_robot_dialog(robots: dict) -> str:
             result["blid"] = list(robots)[selection[0]]
         root.destroy()
 
-    theme.flat_button(root, "Seleccionar", confirm, accent=True).pack(
-        pady=(6, 16), fill="x", padx=20)
+    theme.capsule_button(root, "Seleccionar", confirm, accent=True,
+                         bg=theme.BG, min_width=200).pack(pady=(6, 16))
     listbox.bind("<Double-Button-1>", confirm)
     root.bind("<Return>", confirm)
     root.mainloop()
@@ -213,9 +213,10 @@ class RoombaGUI:
                      width=12, values=list(PAD_OPTIONS.values())).grid(row=0, column=3)
         options.columnconfigure(4, weight=1)
 
-        theme.flat_button(inner, BUTTON_LABELS["start"],
-                          self._dispatch_start_cleaning,
-                          accent=True).pack(fill="x", ipady=8, pady=(0, 14))
+        theme.capsule_button(inner, BUTTON_LABELS["start"],
+                             self._dispatch_start_cleaning, accent=True,
+                             bg=theme.SURFACE, font=("Helvetica Neue", 14, "bold"),
+                             padx=28, pady=11, min_width=330).pack(pady=(0, 14))
 
         rounds = ttk.Frame(inner, style="Card.TFrame")
         rounds.pack(anchor="center", pady=(0, 14))
@@ -232,10 +233,10 @@ class RoombaGUI:
         maint = ttk.Frame(inner, style="Card.TFrame")
         maint.pack(fill="x", pady=(0, 12))
         for i, (label, cmd) in enumerate(DOCK_COMMANDS.items()):
-            maint.columnconfigure(i % 2, weight=1)
-            theme.flat_button(maint, label,
-                              lambda c=cmd: self._dispatch_dock_command(c)).grid(
-                row=i // 2, column=i % 2, sticky="ew", padx=3, pady=3)
+            theme.capsule_button(maint, label,
+                                 lambda c=cmd: self._dispatch_dock_command(c),
+                                 bg=theme.SURFACE, padx=14, pady=7).grid(
+                row=i // 2, column=i % 2, padx=4, pady=4)
 
         ttk.Label(inner, text="REGISTRO DE ACTIVIDAD",
                   style="Card.Dim.TLabel").pack(anchor="w", pady=(0, 6))
@@ -248,8 +249,8 @@ class RoombaGUI:
     def _build_rooms(self, parent):
         top = ttk.Frame(parent)
         top.pack(fill="x", pady=(0, 10))
-        theme.flat_button(top, "↻  Actualizar habitaciones",
-                          self._dispatch_load_rooms).pack(side="left")
+        theme.capsule_button(top, "↻  Actualizar habitaciones",
+                             self._dispatch_load_rooms, bg=theme.BG).pack(side="left")
 
         options = theme.card(parent)
         options.pack(fill="x", pady=(0, 12))
@@ -275,15 +276,15 @@ class RoombaGUI:
         self.rooms_list = theme.listbox(inner)
         self.rooms_list.pack(fill="both", expand=True, pady=(0, 8))
 
-        theme.flat_button(parent, "▶  Limpiar habitaciones seleccionadas",
-                          self._dispatch_clean_rooms, accent=True).pack(
-            fill="x", ipady=5)
+        theme.capsule_button(parent, "▶  Limpiar habitaciones seleccionadas",
+                             self._dispatch_clean_rooms, accent=True,
+                             bg=theme.BG, min_width=320).pack(pady=(2, 0))
 
     def _build_routines(self, parent):
         top = ttk.Frame(parent)
         top.pack(fill="x", pady=(0, 10))
-        theme.flat_button(top, "↻  Actualizar rutinas",
-                          self._dispatch_load_favorites).pack(side="left")
+        theme.capsule_button(top, "↻  Actualizar rutinas",
+                             self._dispatch_load_favorites, bg=theme.BG).pack(side="left")
 
         card = theme.card(parent)
         card.pack(fill="both", expand=True, pady=(0, 12))
@@ -296,15 +297,15 @@ class RoombaGUI:
         self.favorites_list.bind("<Double-Button-1>",
                                  lambda _: self._dispatch_start_favorite())
 
-        theme.flat_button(parent, "▶  Iniciar rutina seleccionada",
-                          self._dispatch_start_favorite, accent=True).pack(
-            fill="x", ipady=5)
+        theme.capsule_button(parent, "▶  Iniciar rutina seleccionada",
+                             self._dispatch_start_favorite, accent=True,
+                             bg=theme.BG, min_width=320).pack(pady=(2, 0))
 
     def _build_schedules(self, parent):
         top = ttk.Frame(parent)
         top.pack(fill="x", pady=(0, 10))
-        theme.flat_button(top, "↻  Actualizar programaciones",
-                          self._dispatch_load_schedules).pack(side="left")
+        theme.capsule_button(top, "↻  Actualizar programaciones",
+                             self._dispatch_load_schedules, bg=theme.BG).pack(side="left")
 
         card = theme.card(parent)
         card.pack(fill="both", expand=True)

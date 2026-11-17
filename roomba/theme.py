@@ -1,4 +1,5 @@
 import tkinter as tk
+import tkinter.font as tkfont
 from tkinter import ttk
 
 BG = "#e9e6d3"
@@ -85,9 +86,33 @@ def card(parent, **kwargs):
                     highlightthickness=1, **kwargs)
 
 
-def flat_button(parent, text, command, accent=False, width=None, style_name=None):
-    name = style_name or ("Accent.TButton" if accent else "TButton")
-    return ttk.Button(parent, text=text, command=command, width=width, style=name)
+def _round_points(x0, y0, x1, y1, r):
+    return [
+        x0 + r, y0, x1 - r, y0, x1, y0, x1, y0 + r,
+        x1, y1 - r, x1, y1, x1 - r, y1, x0 + r, y1,
+        x0, y1, x0, y1 - r, x0, y0 + r, x0, y0,
+    ]
+
+
+def capsule_button(parent, text, command, accent=False, bg=None, font=None,
+                   padx=20, pady=9, radius=None, min_width=None):
+    bg = bg or BG
+    f = tkfont.Font(font=font or FONT)
+    w = max(f.measure(text) + padx * 2 + 4, min_width or 0)
+    h = f.metrics("linespace") + pady * 2 + 4
+    r = radius if radius is not None else h / 2
+    normal = ACCENT if accent else SURFACE_2
+    hover = ACCENT_DARK if accent else BORDER
+    fg = "#ffffff" if accent else TEXT
+    canvas = tk.Canvas(parent, width=w, height=h, bg=bg,
+                       highlightthickness=0, bd=0, cursor="hand2")
+    body = canvas.create_polygon(_round_points(2, 2, w - 2, h - 2, r),
+                                 smooth=True, fill=normal, outline=normal)
+    canvas.create_text(w / 2, h / 2, text=text, font=f, fill=fg)
+    canvas.bind("<Button-1>", lambda _: command())
+    canvas.bind("<Enter>", lambda _: canvas.itemconfigure(body, fill=hover, outline=hover))
+    canvas.bind("<Leave>", lambda _: canvas.itemconfigure(body, fill=normal, outline=normal))
+    return canvas
 
 
 def nav_button(parent, text, command, active=False):
