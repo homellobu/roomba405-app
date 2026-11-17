@@ -45,8 +45,32 @@ def login_flow(store: Store, cloud: IRobotCloud, force: bool = False) -> dict:
     return session
 
 
-def connect_robot(store: Store, cloud: IRobotCloud, blid: str | None = None) -> Roomba:
+def resolve_blid(store: Store, session: dict, prefer_blid: str | None = None):
+    robots = session.get("robots") or {}
+    if not robots:
+        raise RuntimeError("No hay robots vinculados a esta cuenta")
+    if prefer_blid:
+        if prefer_blid not in robots:
+            raise RuntimeError(f"El BLID {prefer_blid} no está en tu cuenta")
+        store.set_blid(prefer_blid)
+        return prefer_blid
+    stored = store.blid
+    if stored in robots:
+        return stored
+    if len(robots) == 1:
+        blid = next(iter(robots))
+        store.set_blid(blid)
+        return blid
+    return None
+
+
+def connect_robot(store: Store, cloud: IRobotCloud, blid: str | None = None,
+                  picker=None) -> Roomba:
     session = login_flow(store, cloud)
+    blid = resolve_blid(store, session, prefer_blid=blid)
+    if blid is None and picker:
+        blid = picker(session["robots"])
+        store.set_blid(blid)
     try:
         robot = Roomba(store, cloud, session, blid=blid)
         robot.connect()

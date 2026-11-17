@@ -5,6 +5,37 @@ from tkinter import scrolledtext, ttk
 from .robot import COMMANDS, DOCK_PHASES
 from .state import PHASE, render_state
 
+
+def pick_robot_dialog(robots: dict) -> str:
+    result = {"blid": None}
+    root = tk.Tk()
+    root.title("Selecciona robot")
+    root.geometry("360x240")
+
+    ttk.Label(root, text="¿Qué robot quieres controlar?",
+              font=("", 12, "bold")).pack(pady=(14, 6))
+
+    listbox = tk.Listbox(root, font=("", 12), activestyle="dotbox")
+    for blid, info in robots.items():
+        listbox.insert("end", f"  {info.get('name', blid)}")
+    listbox.pack(fill="both", expand=True, padx=16, pady=6)
+    listbox.selection_set(0)
+
+    def confirm(*_):
+        selection = listbox.curselection()
+        if selection:
+            result["blid"] = list(robots)[selection[0]]
+        root.destroy()
+
+    ttk.Button(root, text="Seleccionar", command=confirm).pack(pady=(4, 12))
+    listbox.bind("<Double-Button-1>", confirm)
+    root.bind("<Return>", confirm)
+    root.mainloop()
+
+    if not result["blid"]:
+        raise SystemExit(0)
+    return result["blid"]
+
 BUTTON_LABELS = {
     "start": "▶  Limpiar",
     "pause": "⏸  Pausar",

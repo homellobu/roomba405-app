@@ -75,7 +75,9 @@ roomba --logout       # borra credenciales guardadas
 Opciones:
 
 - `--country XX` — código de país para el descubrimiento (por defecto `ES`).
-- `--blid BLID` — selecciona el robot si tienes varios en la cuenta.
+- `--blid BLID` — selecciona el robot si tienes varios en la cuenta. La
+  elección se recuerda: en la GUI con varios robots se muestra un selector la
+  primera vez, y para cambiar después usa `roomba --blid BLID --status`.
 
 ## Credenciales
 

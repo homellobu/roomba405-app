@@ -6,12 +6,12 @@ import traceback
 def run():
     from roomba.cli import connect_robot
     from roomba.cloud import IRobotCloud
-    from roomba.gui import RoombaGUI
+    from roomba.gui import RoombaGUI, pick_robot_dialog
     from roomba.store import Store
 
     store = Store()
     cloud = IRobotCloud()
-    robot = connect_robot(store, cloud)
+    robot = connect_robot(store, cloud, picker=pick_robot_dialog)
     RoombaGUI(robot).run()
 
 

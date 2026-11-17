@@ -50,6 +50,14 @@ class Store:
         stored = self.data.get("password")
         return _unwrap(stored) if stored else None
 
+    @property
+    def blid(self):
+        return self.data.get("blid")
+
+    def set_blid(self, blid: str):
+        self.data["blid"] = blid
+        self.save()
+
     def set_credentials(self, email: str, password: str):
         self.data["email"] = email
         self.data["password"] = _wrap(password)
