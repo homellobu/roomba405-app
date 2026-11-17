@@ -103,26 +103,27 @@ class RoombaGUI:
         notebook = ttk.Notebook(main)
         notebook.pack(fill="both", expand=True)
 
-        control = ttk.Frame(notebook, padding=12)
+        control = ttk.Frame(notebook, padding=14, style="Card.TFrame")
         notebook.add(control, text="Control")
         self._build_control(control)
 
-        rooms = ttk.Frame(notebook, padding=12)
+        rooms = ttk.Frame(notebook, padding=14, style="Card.TFrame")
         notebook.add(rooms, text="Habitaciones")
         self._build_rooms(rooms)
 
-        routines = ttk.Frame(notebook, padding=12)
+        routines = ttk.Frame(notebook, padding=14, style="Card.TFrame")
         notebook.add(routines, text="Rutinas")
         self._build_routines(routines)
 
-        schedules = ttk.Frame(notebook, padding=12)
+        schedules = ttk.Frame(notebook, padding=14, style="Card.TFrame")
         notebook.add(schedules, text="Programaciones")
         self._build_schedules(schedules)
 
         ttk.Label(main, text="Registro", style="Dim.TLabel").pack(anchor="w", pady=(10, 2))
         self.log_text = scrolledtext.ScrolledText(
-            main, height=7, state="disabled", bg=theme.SURFACE, fg=theme.TEXT_DIM,
-            highlightthickness=0, bd=0, font=("Menlo", 11), padx=10, pady=8)
+            main, height=7, state="disabled", bg=theme.SURFACE, fg=theme.TEXT,
+            highlightthickness=1, highlightbackground=theme.BORDER, bd=0,
+            font=theme.FONT_MONO, padx=10, pady=8)
         self.log_text.pack(fill="both", expand=True)
 
     def _build_control(self, parent):
@@ -159,18 +160,18 @@ class RoombaGUI:
 
         options = ttk.LabelFrame(parent, text=" Opciones de limpieza ", padding=10)
         options.pack(fill="x", pady=(0, 8))
-        ttk.Label(options, text="Succión", style="Dim.TLabel").grid(row=0, column=0, padx=(0, 6))
+        ttk.Label(options, text="Succión", style="Card.Dim.TLabel").grid(row=0, column=0, padx=(0, 6))
         self.suction_var = tk.StringVar(value=SUCTION_OPTIONS[""])
         ttk.Combobox(options, textvariable=self.suction_var, state="readonly",
                      width=14, values=list(SUCTION_OPTIONS.values())).grid(row=0, column=1, padx=(0, 20))
-        ttk.Label(options, text="Fregado", style="Dim.TLabel").grid(row=0, column=2, padx=(0, 6))
+        ttk.Label(options, text="Fregado", style="Card.Dim.TLabel").grid(row=0, column=2, padx=(0, 6))
         self.pad_var = tk.StringVar(value=PAD_OPTIONS[""])
         ttk.Combobox(options, textvariable=self.pad_var, state="readonly",
                      width=14, values=list(PAD_OPTIONS.values())).grid(row=0, column=3)
         options.columnconfigure(4, weight=1)
 
         ttk.Label(parent, text="Ctrl+clic o Shift+clic para seleccionar varias",
-                  style="Dim.TLabel").pack(anchor="w", pady=(0, 4))
+                  style="Card.Dim.TLabel").pack(anchor="w", pady=(0, 4))
         self.rooms_list = theme.listbox(parent)
         self.rooms_list.pack(fill="both", expand=True, pady=(0, 8))
 
@@ -184,7 +185,7 @@ class RoombaGUI:
                           self._dispatch_load_favorites).pack(side="left")
 
         ttk.Label(parent, text="Rutinas guardadas en tu cuenta de iRobot",
-                  style="Dim.TLabel").pack(anchor="w", pady=(0, 4))
+                  style="Card.Dim.TLabel").pack(anchor="w", pady=(0, 4))
         self.favorites_list = theme.listbox(parent)
         self.favorites_list.pack(fill="both", expand=True, pady=(0, 8))
         self.favorites_list.bind("<Double-Button-1>", lambda _: self._dispatch_start_favorite())
@@ -403,7 +404,8 @@ class RoombaGUI:
         phase = mission.get("phase")
         if phase:
             self.phase_label.configure(text=PHASE.get(phase, phase),
-                                       bg=theme.phase_color(phase, mission.get("error")))
+                                       bg=theme.phase_color(phase, mission.get("error")),
+                                       fg="#ffffff")
         self.status_text.configure(state="normal")
         self.status_text.delete("1.0", "end")
         self.status_text.insert("1.0", render_state(status))

@@ -1,21 +1,23 @@
 import tkinter as tk
 from tkinter import ttk
 
-BG = "#1b1d23"
-SURFACE = "#242730"
-SURFACE_2 = "#2e323d"
-TEXT = "#e8eaf0"
-TEXT_DIM = "#9aa0ae"
-ACCENT = "#4f8cff"
-ACCENT_DARK = "#3a6fd8"
-SUCCESS = "#3fbf7f"
-WARNING = "#e8b23f"
+BG = "#f2f3f5"
+SURFACE = "#ffffff"
+SURFACE_2 = "#e9ebee"
+BORDER = "#e2e4e8"
+TEXT = "#1a1c20"
+TEXT_DIM = "#6b7280"
+ACCENT = "#22a55e"
+ACCENT_DARK = "#1b8a4e"
+SUCCESS = "#22a55e"
+WARNING = "#e8a13f"
 DANGER = "#e05d5d"
 
-FONT = ("SF Pro Text", 12)
-FONT_SMALL = ("SF Pro Text", 11)
-FONT_TITLE = ("SF Pro Display", 16, "bold")
-FONT_PHASE = ("SF Pro Display", 13, "bold")
+FONT = ("Helvetica Neue", 13)
+FONT_SMALL = ("Helvetica Neue", 11)
+FONT_TITLE = ("Helvetica Neue", 17, "bold")
+FONT_PHASE = ("Helvetica Neue", 12, "bold")
+FONT_MONO = ("Menlo", 12)
 
 
 def apply(root: tk.Tk):
@@ -30,49 +32,59 @@ def apply(root: tk.Tk):
     style.configure("TFrame", background=BG)
     style.configure("Card.TFrame", background=SURFACE)
     style.configure("TLabel", background=BG, foreground=TEXT, font=FONT)
+    style.configure("Card.TLabel", background=SURFACE, foreground=TEXT, font=FONT)
     style.configure("Dim.TLabel", background=BG, foreground=TEXT_DIM, font=FONT_SMALL)
+    style.configure("Card.Dim.TLabel", background=SURFACE, foreground=TEXT_DIM, font=FONT_SMALL)
     style.configure("Title.TLabel", background=BG, foreground=TEXT, font=FONT_TITLE)
 
     style.configure("TNotebook", background=BG, borderwidth=0, tabmargins=(0, 4, 0, 0))
-    style.configure("TNotebook.Tab", background=SURFACE, foreground=TEXT_DIM,
+    style.configure("TNotebook.Tab", background=BG, foreground=TEXT_DIM,
                     padding=(18, 8), borderwidth=0, font=FONT)
     style.map("TNotebook.Tab",
-              background=[("selected", SURFACE_2)],
+              background=[("selected", SURFACE)],
               foreground=[("selected", TEXT)])
 
     style.configure("TButton", background=SURFACE_2, foreground=TEXT,
                     borderwidth=0, padding=(12, 8), font=FONT)
-    style.map("TButton", background=[("active", ACCENT_DARK), ("pressed", ACCENT_DARK)])
+    style.map("TButton", background=[("active", BORDER), ("pressed", BORDER)])
     style.configure("Accent.TButton", background=ACCENT, foreground="#ffffff")
     style.map("Accent.TButton", background=[("active", ACCENT_DARK), ("pressed", ACCENT_DARK)])
 
-    style.configure("TLabelframe", background=BG, foreground=TEXT_DIM, borderwidth=0)
-    style.configure("TLabelframe.Label", background=BG, foreground=TEXT_DIM, font=FONT_SMALL)
+    style.configure("TLabelframe", background=SURFACE, foreground=TEXT_DIM, borderwidth=0)
+    style.configure("TLabelframe.Label", background=SURFACE, foreground=TEXT_DIM, font=FONT_SMALL)
 
-    style.configure("TCombobox", fieldbackground=SURFACE_2, background=SURFACE_2,
-                    foreground=TEXT, arrowcolor=TEXT, borderwidth=0)
-    style.map("TCombobox", fieldbackground=[("readonly", SURFACE_2)],
+    style.configure("TCombobox", fieldbackground=SURFACE, background=SURFACE,
+                    foreground=TEXT, arrowcolor=TEXT, bordercolor=BORDER, borderwidth=1)
+    style.map("TCombobox", fieldbackground=[("readonly", SURFACE)],
               foreground=[("readonly", TEXT)])
 
     style.configure("Treeview", background=SURFACE, foreground=TEXT,
-                    fieldbackground=SURFACE, borderwidth=0, rowheight=28, font=FONT)
-    style.configure("Treeview.Heading", background=SURFACE_2, foreground=TEXT_DIM,
+                    fieldbackground=SURFACE, borderwidth=0, rowheight=30, font=FONT)
+    style.configure("Treeview.Heading", background=BG, foreground=TEXT_DIM,
                     borderwidth=0, font=FONT_SMALL)
     style.map("Treeview", background=[("selected", ACCENT)],
               foreground=[("selected", "#ffffff")])
 
+    style.configure("Vertical.TScrollbar", background=SURFACE_2, bordercolor=SURFACE,
+                    arrowcolor=TEXT_DIM, troughcolor=SURFACE, borderwidth=0)
+
+
+def card(parent, **kwargs):
+    return tk.Frame(parent, bg=SURFACE, highlightbackground=BORDER,
+                    highlightthickness=1, **kwargs)
+
 
 def flat_button(parent, text, command, accent=False, width=None):
+    normal_bg = ACCENT if accent else SURFACE_2
+    hover_bg = ACCENT_DARK if accent else BORDER
     btn = tk.Button(
         parent, text=text, command=command, bd=0, relief="flat", highlightthickness=0,
-        bg=ACCENT if accent else SURFACE_2,
+        bg=normal_bg,
         fg="#ffffff" if accent else TEXT,
-        activebackground=ACCENT_DARK if accent else SURFACE_2,
-        activeforeground="#ffffff",
+        activebackground=hover_bg,
+        activeforeground="#ffffff" if accent else TEXT,
         font=FONT, padx=16, pady=9, cursor="hand2", width=width,
     )
-    hover_bg = ACCENT_DARK if accent else SURFACE_2
-    normal_bg = ACCENT if accent else SURFACE_2
     btn.bind("<Enter>", lambda _: btn.configure(bg=hover_bg))
     btn.bind("<Leave>", lambda _: btn.configure(bg=normal_bg))
     return btn
@@ -81,7 +93,8 @@ def flat_button(parent, text, command, accent=False, width=None):
 def listbox(parent, **kwargs):
     return tk.Listbox(
         parent, bg=SURFACE, fg=TEXT, selectbackground=ACCENT,
-        selectforeground="#ffffff", highlightthickness=0, bd=0,
+        selectforeground="#ffffff", highlightthickness=1,
+        highlightbackground=BORDER, bd=0,
         activestyle="none", font=FONT, **kwargs
     )
 
@@ -105,5 +118,6 @@ def text_widget(parent, height=None):
     return tk.Text(
         parent, height=height, state="disabled", relief="flat",
         bg=SURFACE, fg=TEXT, insertbackground=TEXT,
-        highlightthickness=0, bd=0, font=("Menlo", 12), padx=12, pady=10,
+        highlightthickness=1, highlightbackground=BORDER, bd=0,
+        font=FONT_MONO, padx=12, pady=10,
     )
