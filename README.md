@@ -25,6 +25,17 @@ El estado (batería, fase de limpieza, errores, posición, Wi-Fi…) se lee del
 device shadow de AWS. El token MQTT caduca en ~5 minutos; la app lo renueva
 automáticamente cada 4 minutos.
 
+### Volver a la base con reintentos
+
+Si a veces el robot no encuentra la base al terminar de limpiar, la GUI y el
+comando `dock` tienen un modo con reintentos: se envía el comando de regreso y
+se comprueba el estado real del robot; si no entra en fase de regreso o carga,
+se reintenta hasta 3 veces.
+
+En la GUI usa el botón **"Volver a la base (con reintentos)"**. Si agota los
+reintentos, el robot probablemente esté demasiado lejos o desorientado:
+acércalo a la base y vuelve a pulsarlo.
+
 ## Instalación
 
 Requiere Python 3.10+.
@@ -38,6 +49,12 @@ pip install -e ".[dev]"
 
 ## Uso
 
+Interfaz gráfica (Tkinter, incluida en Python):
+
+```bash
+roomba --gui
+```
+
 Menú interactivo:
 
 ```bash
@@ -50,6 +67,7 @@ Comandos directos:
 roomba start          # inicia la limpieza
 roomba dock           # vuelve a la base
 roomba --status       # muestra el estado del robot y sale
+roomba --gui          # interfaz gráfica
 roomba start --watch  # envía el comando y muestra el estado después
 roomba --logout       # borra credenciales guardadas
 ```

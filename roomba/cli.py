@@ -115,6 +115,7 @@ def main():
                         help="Código de país para el descubrimiento (por defecto ES)")
     parser.add_argument("--blid", default=None, help="BLID del robot si tienes varios")
     parser.add_argument("--status", action="store_true", help="Muestra el estado y sale")
+    parser.add_argument("--gui", action="store_true", help="Abre la interfaz gráfica")
     parser.add_argument("--watch", action="store_true",
                         help="Tras un comando, muestra el estado del robot")
     parser.add_argument("--logout", action="store_true", help="Borra credenciales guardadas")
@@ -130,7 +131,10 @@ def main():
     robot = connect_robot(store, cloud, blid=args.blid)
 
     try:
-        if args.status:
+        if args.gui:
+            from .gui import RoombaGUI
+            RoombaGUI(robot).run()
+        elif args.status:
             robot.refresh_state()
             print()
             print(render_state(robot.snapshot()))

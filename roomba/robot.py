@@ -14,6 +14,8 @@ REFRESH_EVERY = 240
 SHADOW_GET = "$aws/things/{blid}/shadow/get"
 SHADOW_UPDATE = "$aws/things/{blid}/shadow/update"
 
+DOCK_PHASES = {"hmUsrDock", "hmMidMsn", "hmPostMsn", "charge", "evac"}
+
 COMMANDS = {
     "start": "Iniciar limpieza",
     "pause": "Pausar",
@@ -176,6 +178,26 @@ class Roomba:
                 qos=mqtt.QoS.AT_LEAST_ONCE,
             )
         self._fresh.wait(timeout=4)
+
+    def _wait_for_phase(self, phases: set, timeout: float):
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            self.refresh_state()
+            mission = self.snapshot().get("cleanMissionStatus") or {}
+            phase = mission.get("phase")
+            if phase in phases:
+                return phase
+            time.sleep(3)
+        return None
+
+    def dock_with_retry(self, attempts: int = 3, wait_per_attempt: float = 25) -> bool:
+        last_phase = None
+        for _ in range(attempts):
+            self.send("dock")
+            last_phase = self._wait_for_phase(DOCK_PHASES, wait_per_attempt)
+            if last_phase:
+                return True
+        return False
 
     def send(self, command: str):
         if command not in COMMANDS:
