@@ -52,7 +52,7 @@ def open_interface(app):
     try:
         log_step("creando ventana nativa")
         webview.create_window("Roomba", app.url,
-                              width=1120, height=780, min_size=(900, 640))
+                              width=1170, height=800, min_size=(900, 640))
         webview.start()
         log_step("ventana cerrada")
     except Exception as e:

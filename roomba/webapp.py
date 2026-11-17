@@ -68,6 +68,12 @@ class _Handler(BaseHTTPRequestHandler):
         if path in ("/", "/index.html"):
             content = (WEB_DIR / "index.html").read_bytes()
             self._send(200, content, "text/html; charset=utf-8")
+        elif path == "/classic.html":
+            content = (WEB_DIR / "classic.html").read_bytes()
+            self._send(200, content, "text/html; charset=utf-8")
+        elif path == "/plate.jpg":
+            content = (WEB_DIR / "plate.jpg").read_bytes()
+            self._send(200, content, "image/jpeg")
         elif path == "/icon.png":
             if ICON_PATH.exists():
                 self._send(200, ICON_PATH.read_bytes(), "image/png")

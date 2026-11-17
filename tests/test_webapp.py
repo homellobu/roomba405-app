@@ -72,8 +72,12 @@ def test_index_served(server):
     with urllib.request.urlopen(url, timeout=5) as res:
         html = res.read().decode()
         assert res.headers["Content-Type"].startswith("text/html")
-    assert "Tu casa, en calma" in html
     assert "Empezar limpieza" in html
+    assert "ESTADO DE MANTENIMIENTO".lower() in html.lower()
+    with urllib.request.urlopen(url + "plate.jpg", timeout=5) as res:
+        assert res.headers["Content-Type"] == "image/jpeg"
+    with urllib.request.urlopen(url + "classic.html", timeout=5) as res:
+        assert b"Tu casa, en calma" in res.read()
 
 
 def test_status_endpoint(server):

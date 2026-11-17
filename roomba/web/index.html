@@ -2,277 +2,240 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Roomba</title>
 <style>
   :root {
-    --bg: #e7ecd4;
-    --green-soft: #dde6c8;
-    --card: #ffffff;
-    --soft: #f0efe6;
-    --border: #e4e2d4;
-    --text: #1e221a;
-    --dim: #9a9d8c;
     --green: #2e5233;
     --green-dark: #24422a;
-    --ring: #dce8d2;
+    --text: #26291f;
+    --dim: #9a9d8c;
+    --border: #e6e4d6;
+    --ring: #cfe0b4;
     --ok: #6fa06f;
     --warn: #c9a13f;
     --bad: #c05d50;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
   body {
+    background: #d9d6c2;
     font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
-    background: var(--bg);
     color: var(--text);
-    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  #stage {
+    position: relative;
+    aspect-ratio: 3 / 2;
+    width: min(100vw, 150vh);
+    background: url("/plate.jpg") 0 0 / 100% 100% no-repeat;
+    overflow: hidden;
+  }
+  .overlay-label {
+    font-size: 0.85em; letter-spacing: 0.16em; font-weight: 600;
+    color: var(--dim); text-transform: uppercase;
+  }
+  #statusline {
+    position: absolute; left: 4.6%; top: 24%; width: 34%;
+    font-size: 1.5em; font-weight: 600; color: var(--dim);
+  }
+  #statusline.ok { color: #3f6d3f; }
+  #statusline.warn { color: #a8842f; }
+  #statusline.bad { color: var(--bad); }
+  .panel {
+    position: absolute; left: 59.5%; top: 14.5%; width: 40%; height: 61%;
+    background: #fff; border-radius: 1.6em;
+    box-shadow: 0 1em 3em rgba(60, 65, 40, 0.18);
+    padding: 2em 2.2em;
     display: flex; flex-direction: column;
   }
-  .topbar {
-    background: var(--card);
-    display: flex; align-items: center; gap: 14px;
-    padding: 14px 28px;
-    box-shadow: 0 1px 0 var(--border);
-  }
-  .brand { font-size: 16px; font-weight: 700; }
-  nav { margin-left: auto; display: flex; gap: 4px; align-items: center; }
-  nav button {
-    border: none; background: transparent; color: var(--dim);
-    font-size: 13px; padding: 7px 14px; border-radius: 999px; cursor: pointer;
-    font-family: inherit;
-  }
-  nav button:hover { background: var(--soft); color: var(--text); }
-  nav button.active { background: var(--ring); color: var(--green); font-weight: 600; }
-  .conn { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--dim); margin-left: 12px; }
-  .gear {
-    border: none; background: var(--soft); font-size: 15px; cursor: pointer;
-    width: 34px; height: 34px; border-radius: 50%; margin-left: 10px;
-    transition: background .15s;
-  }
-  .gear:hover { background: var(--ring); }
-  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--dim); }
-  .dot.ok { background: var(--ok); }
-  .dot.bad { background: var(--bad); }
-  main { flex: 1; display: flex; gap: 30px; align-items: stretch; padding: 26px 30px 30px; max-width: 1150px; width: 100%; margin: 0 auto; }
-  .scene { flex: 1; min-width: 0; }
-  .scene h1 { font-size: 36px; font-weight: 700; letter-spacing: -0.5px; }
-  .statusline { margin-top: 10px; font-size: 16px; font-weight: 600; color: var(--dim); }
-  .statusline.ok { color: var(--green); }
-  .statusline.warn { color: var(--warn); }
-  .statusline.bad { color: var(--bad); }
-  .robot-img { display: block; width: 250px; margin: 20px 0 10px; filter: drop-shadow(0 16px 16px rgba(40, 50, 30, 0.10)); }
-  .maint-card {
-    background: var(--card); border-radius: 22px; padding: 20px 24px;
-    box-shadow: 0 10px 30px rgba(50, 60, 35, 0.08);
-    max-width: 430px;
-  }
-  .section-label {
-    font-size: 11px; letter-spacing: 1.4px; color: var(--dim);
-    font-weight: 600; margin-bottom: 14px;
-  }
-  .rings { display: flex; gap: 30px; }
-  .ring { text-align: center; }
-  .ring svg { display: block; }
-  .ring .lbl { font-size: 12px; color: var(--dim); margin-top: 4px; }
-  .details {
-    margin-top: 20px; background: var(--card); border-radius: 16px;
-    padding: 14px 18px; font-family: Menlo, monospace; font-size: 12px;
-    line-height: 1.7; white-space: pre-wrap; color: var(--text);
-    box-shadow: 0 6px 18px rgba(50, 60, 35, 0.06);
-    max-width: 430px;
-  }
-  .panel {
-    width: 370px; flex-shrink: 0; background: var(--card);
-    border-radius: 30px; padding: 28px 26px;
-    box-shadow: 0 18px 50px rgba(50, 60, 35, 0.12);
-    align-self: flex-start;
+  .select-wrap { position: relative; margin-top: 1em; }
+  .select-wrap .house {
+    position: absolute; left: 0.9em; top: 50%; transform: translateY(-50%);
+    font-size: 1em; pointer-events: none;
   }
   select {
     width: 100%; appearance: none; -webkit-appearance: none;
-    background: #fff; border: 1.5px solid var(--border); border-radius: 14px;
-    padding: 12px 14px; font-size: 14px; color: var(--text); font-family: inherit;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1l5 5 5-5' stroke='%239a9d8c' stroke-width='2' fill='none' stroke-linecap='round'/></svg>");
-    background-repeat: no-repeat; background-position: right 14px center;
-    cursor: pointer;
+    background: #fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1l5 5 5-5' stroke='%239a9d8c' stroke-width='2' fill='none' stroke-linecap='round'/></svg>") no-repeat right 1em center;
+    border: 1px solid var(--border); border-radius: 0.9em;
+    padding: 0.85em 2.4em 0.85em 2.6em;
+    font-size: 1.05em; color: var(--text); font-family: inherit; cursor: pointer;
   }
-  .opts { display: flex; gap: 10px; margin-top: 12px; }
-  .opts .field { flex: 1; }
-  .opts label { display: block; font-size: 11px; color: var(--dim); margin: 0 0 5px 4px; }
   .btn-primary {
-    width: 100%; margin-top: 20px; border: none; cursor: pointer;
-    background: var(--green); color: #fff; font-size: 15px; font-weight: 600;
-    padding: 15px 0; border-radius: 999px; font-family: inherit;
-    box-shadow: 0 8px 20px rgba(46, 82, 51, 0.28);
+    margin-top: 1.6em; border: none; cursor: pointer;
+    background: var(--green); color: #fff; font-size: 1.1em; font-weight: 600;
+    padding: 1em 0; border-radius: 999px; font-family: inherit;
+    box-shadow: 0 0.5em 1.4em rgba(46, 82, 51, 0.30);
     transition: background .15s, transform .1s;
   }
   .btn-primary:hover { background: var(--green-dark); }
   .btn-primary:active { transform: scale(0.98); }
-  .btn-pill {
-    border: none; cursor: pointer; background: var(--soft); color: var(--text);
-    font-size: 13px; padding: 9px 16px; border-radius: 999px; font-family: inherit;
-    transition: background .15s;
-  }
-  .btn-pill:hover { background: var(--ring); }
-  .rounds { display: flex; gap: 16px; justify-content: center; margin-top: 22px; }
+  .rounds { display: flex; gap: 1.2em; justify-content: center; margin-top: auto; padding-bottom: 0.4em; align-items: center; }
   .round {
-    width: 58px; height: 58px; border-radius: 50%; border: none; cursor: pointer;
-    background: #fff; font-size: 21px; color: var(--text);
-    box-shadow: 0 5px 16px rgba(50, 60, 35, 0.14);
+    width: 3.7em; height: 3.7em; border-radius: 50%; border: 1px solid #efece0; cursor: pointer;
+    background: #fff; font-size: 1em;
+    box-shadow: 0 0.35em 1em rgba(60, 65, 40, 0.14);
     display: flex; align-items: center; justify-content: center;
+    font-size: 1.5em;
     transition: transform .1s, box-shadow .15s;
   }
-  .round.small { width: 46px; height: 46px; font-size: 16px; }
-  .round:hover { box-shadow: 0 8px 22px rgba(50, 60, 35, 0.22); }
+  .round.small { width: 2.9em; height: 2.9em; font-size: 1.15em; }
+  .round:hover { box-shadow: 0 0.5em 1.4em rgba(60, 65, 40, 0.22); }
   .round:active { transform: scale(0.93); }
-  .maint { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 14px; }
-  .maint .btn-pill { text-align: center; }
-  .log {
-    margin-top: 12px; max-height: 140px; overflow-y: auto;
-    font-family: Menlo, monospace; font-size: 11.5px; line-height: 1.8;
-    color: var(--text);
+  .maintcard {
+    position: absolute; left: 2%; top: 77.5%; width: 96%; height: 21%;
+    background: #fff; border-radius: 1.4em;
+    box-shadow: 0 0.8em 2.4em rgba(60, 65, 40, 0.14);
+    padding: 1.1em 2.4em;
+    display: flex; align-items: center; gap: 2em;
   }
-  .log .t { color: var(--dim); margin-right: 8px; }
-  .view { display: none; flex: 1; min-width: 0; }
-  .view.active { display: block; }
-  .page-card {
-    background: var(--card); border-radius: 24px; padding: 22px;
-    box-shadow: 0 10px 30px rgba(50, 60, 35, 0.08); margin-top: 14px;
+  .maintcard .overlay-label { width: 11em; flex-shrink: 0; }
+  .rings { display: flex; flex: 1; justify-content: space-around; align-items: center; }
+  .ring { text-align: center; }
+  .ring .lbl { font-size: 0.85em; color: var(--dim); margin-top: 0.25em; }
+  #conn-dot {
+    position: absolute; right: 8.6%; top: 4.6%;
+    width: 0.8em; height: 0.8em; border-radius: 50%; background: var(--dim);
   }
-  .list { list-style: none; }
-  .list li {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 8px; border-bottom: 1px solid var(--border); font-size: 14px;
+  #conn-dot.ok { background: var(--ok); }
+  #conn-dot.bad { background: var(--bad); }
+  #gear-hotspot {
+    position: absolute; right: 3.4%; top: 2.6%; width: 4.5%; height: 6.5%;
+    cursor: pointer; border-radius: 50%;
   }
-  .list li:last-child { border-bottom: none; }
-  .list .kind { margin-left: auto; font-size: 12px; color: var(--dim); }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th { text-align: left; font-size: 11px; letter-spacing: 1px; color: var(--dim); padding: 8px; }
-  td { padding: 10px 8px; border-top: 1px solid var(--border); }
-  .actions { display: flex; gap: 10px; margin-top: 16px; }
-  .actions .btn-primary { width: auto; padding: 13px 28px; margin-top: 0; }
-  .empty { color: var(--dim); font-size: 13px; padding: 12px 4px; }
-  h2 { font-size: 24px; font-weight: 700; }
-  .version { text-align: right; font-size: 10px; color: var(--dim); padding: 0 14px 8px; }
+  #gear-hotspot:hover { background: rgba(255, 255, 255, 0.35); }
+  #drawer {
+    position: absolute; top: 0; right: 0; height: 100%; width: 34em;
+    background: #faf9f2; box-shadow: -0.6em 0 2.4em rgba(50, 55, 35, 0.25);
+    transform: translateX(102%); transition: transform .25s ease;
+    padding: 1.8em 1.6em; overflow-y: auto; font-size: 1em;
+  }
+  #drawer.open { transform: translateX(0); }
+  #drawer h3 { font-size: 1.05em; margin: 1.4em 0 0.5em; color: var(--text); }
+  #drawer h3:first-child { margin-top: 0; }
+  #drawer .btn-pill {
+    border: none; cursor: pointer; background: #efede0; color: var(--text);
+    font-size: 0.9em; padding: 0.6em 1.1em; border-radius: 999px; font-family: inherit;
+  }
+  #drawer .btn-pill:hover { background: var(--ring); }
+  #drawer .btn-go {
+    border: none; cursor: pointer; background: var(--green); color: #fff;
+    font-size: 0.95em; font-weight: 600; padding: 0.7em 1.4em; border-radius: 999px;
+    font-family: inherit;
+  }
+  #drawer select { font-size: 0.9em; padding: 0.5em 2em 0.5em 0.8em; width: auto; }
+  #drawer .row { display: flex; gap: 0.6em; align-items: center; flex-wrap: wrap; }
+  #drawer ul { list-style: none; }
+  #drawer li {
+    display: flex; align-items: center; gap: 0.5em;
+    padding: 0.45em 0.2em; border-bottom: 1px solid var(--border); font-size: 0.95em;
+  }
+  #drawer li:last-child { border-bottom: none; }
+  #drawer li .kind { margin-left: auto; font-size: 0.8em; color: var(--dim); }
+  #drawer table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+  #drawer th { text-align: left; color: var(--dim); font-size: 0.85em; padding: 0.3em; }
+  #drawer td { padding: 0.4em 0.3em; border-top: 1px solid var(--border); }
+  #drawer .empty { color: var(--dim); font-size: 0.9em; padding: 0.4em 0; }
+  #log {
+    max-height: 9em; overflow-y: auto; font-family: Menlo, monospace;
+    font-size: 0.78em; line-height: 1.7; color: var(--text);
+  }
+  #log .t { color: var(--dim); margin-right: 0.6em; }
+  #drawer .classic { font-size: 0.8em; color: var(--dim); margin-top: 1.5em; display: block; }
+  .opts { display: flex; gap: 0.8em; margin-top: 0.8em; }
+  .opts .field { flex: 1; }
+  .opts label { display: block; font-size: 0.75em; color: var(--dim); margin: 0 0 0.3em 0.3em; }
+  .opts select { width: 100%; padding: 0.55em 2em 0.55em 0.8em; }
 </style>
 </head>
 <body>
-<div class="topbar">
-  <span class="brand">Hogar en Armonía</span>
-  <nav id="nav">
-    <button data-view="control" class="active">Control</button>
-    <button data-view="habitaciones">Habitaciones</button>
-    <button data-view="rutinas">Rutinas</button>
-    <button data-view="programaciones">Programaciones</button>
-  </nav>
-  <span class="conn"><span class="dot" id="conn-dot"></span><span id="conn-text">Conectando…</span></span>
-  <button class="gear" id="btn-gear" title="Detalles del robot">⚙️</button>
-</div>
+<div id="stage">
+  <div id="statusline">Conectando…</div>
 
-<main>
-  <section class="view active" id="view-control" style="display:flex; gap:30px; align-items:flex-start;">
-    <div class="scene">
-      <h1>Tu casa, en calma</h1>
-      <div class="statusline" id="statusline">Esperando estado del robot…</div>
-      <img class="robot-img" src="/robot.png?v=5" alt="Roomba">
-      <div class="maint-card">
-        <div class="section-label">ESTADO DE MANTENIMIENTO</div>
-        <div class="rings">
-          <div class="ring" id="ring-bat-box"></div>
-          <div class="ring" id="ring-bin-box"></div>
-          <div class="ring" id="ring-conn-box"></div>
-        </div>
-      </div>
-      <div class="details" id="details">Aún no hay estado del robot.</div>
-    </div>
-
-    <div class="panel">
-      <div class="section-label">SELECCIONA UNA HABITACIÓN</div>
+  <div class="panel">
+    <div class="overlay-label">Selecciona una habitación</div>
+    <div class="select-wrap">
+      <span class="house">🏠</span>
       <select id="room-select"><option>Todas las habitaciones</option></select>
-      <div class="opts">
-        <div class="field">
-          <label>Succión</label>
-          <select id="suction">
-            <option value="">Por defecto</option>
-            <option value="low">Baja</option>
-            <option value="medium">Media</option>
-            <option value="high">Alta</option>
-            <option value="turbo">Turbo</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Fregado</label>
-          <select id="pad">
-            <option value="">Por defecto</option>
-            <option value="1">Húmedo bajo</option>
-            <option value="2">Húmedo medio</option>
-            <option value="3">Húmedo alto</option>
-          </select>
-        </div>
-      </div>
-      <button class="btn-primary" id="btn-start">▶&nbsp; Empezar limpieza</button>
-      <div class="rounds">
-        <button class="round" id="btn-pause" title="Pausar">⏸</button>
-        <button class="round" id="btn-dock" title="Volver a la base (con reintentos)">🏠</button>
-        <button class="round" id="btn-find" title="Localizar">📍</button>
-        <button class="round small" id="btn-resume" title="Reanudar">⏵</button>
-        <button class="round small" id="btn-stop" title="Detener">⏹</button>
-      </div>
-      <div class="section-label" style="margin-top:24px;">MANTENIMIENTO</div>
-      <div class="maint">
-        <button class="btn-pill" data-cmd="evac">🗑 Vaciar depósito</button>
-        <button class="btn-pill" data-cmd="washpad">💧 Lavar pad</button>
-        <button class="btn-pill" data-cmd="drypad">🌡 Secar pad</button>
-        <button class="btn-pill" data-cmd="flrefill">💦 Rellenar agua</button>
-      </div>
-      <div class="section-label" style="margin-top:24px;">REGISTRO DE ACTIVIDAD</div>
-      <div class="log" id="log"></div>
     </div>
-  </section>
+    <button class="btn-primary" id="btn-start">▶&nbsp; Empezar limpieza</button>
+    <div class="rounds">
+      <button class="round" id="btn-pause" title="Pausar">⏸</button>
+      <button class="round" id="btn-dock" title="Volver a la base (con reintentos)">🏠</button>
+      <button class="round" id="btn-find" title="Localizar">📍</button>
+      <button class="round small" id="btn-resume" title="Reanudar">⏵</button>
+      <button class="round small" id="btn-stop" title="Detener">⏹</button>
+    </div>
+  </div>
 
-  <section class="view" id="view-habitaciones">
-    <h2>Habitaciones</h2>
-    <div class="actions">
-      <button class="btn-pill" id="btn-load-rooms">↻ Actualizar habitaciones</button>
+  <div class="maintcard">
+    <div class="overlay-label">Estado de mantenimiento</div>
+    <div class="rings">
+      <div class="ring" id="ring-bat-box"></div>
+      <div class="ring" id="ring-bin-box"></div>
+      <div class="ring" id="ring-conn-box"></div>
     </div>
-    <div class="page-card">
-      <ul class="list" id="rooms-list"><li class="empty">Pulsa "Actualizar habitaciones" para cargar el mapa.</li></ul>
-    </div>
-    <div class="actions">
-      <button class="btn-primary" id="btn-clean-rooms">▶&nbsp; Limpiar selección</button>
-    </div>
-  </section>
+  </div>
 
-  <section class="view" id="view-rutinas">
-    <h2>Rutinas</h2>
-    <div class="actions">
-      <button class="btn-pill" id="btn-load-favs">↻ Actualizar rutinas</button>
-    </div>
-    <div class="page-card">
-      <ul class="list" id="favs-list"><li class="empty">Pulsa "Actualizar rutinas".</li></ul>
-    </div>
-    <div class="actions">
-      <button class="btn-primary" id="btn-start-fav">▶&nbsp; Iniciar seleccionada</button>
-    </div>
-  </section>
+  <div id="conn-dot"></div>
+  <div id="gear-hotspot" title="Ajustes"></div>
 
-  <section class="view" id="view-programaciones">
-    <h2>Programaciones</h2>
-    <div class="actions">
-      <button class="btn-pill" id="btn-load-scheds">↻ Actualizar programaciones</button>
+  <div id="drawer">
+    <h3>Habitaciones</h3>
+    <div class="row">
+      <button class="btn-pill" id="btn-load-rooms">↻ Actualizar</button>
+      <select id="suction">
+        <option value="">Succión: por defecto</option>
+        <option value="low">Succión: baja</option>
+        <option value="medium">Succión: media</option>
+        <option value="high">Succión: alta</option>
+        <option value="turbo">Succión: turbo</option>
+      </select>
+      <select id="pad">
+        <option value="">Fregado: por defecto</option>
+        <option value="1">Fregado: bajo</option>
+        <option value="2">Fregado: medio</option>
+        <option value="3">Fregado: alto</option>
+      </select>
     </div>
-    <div class="page-card">
-      <table>
-        <thead><tr><th>Nombre</th><th>Hora</th><th>Días</th><th>Activa</th></tr></thead>
-        <tbody id="scheds-body"><tr><td colspan="4" class="empty">Pulsa "Actualizar programaciones".</td></tr></tbody>
-      </table>
+    <ul id="rooms-list"><li class="empty">Pulsa "Actualizar" para cargar el mapa.</li></ul>
+    <div class="row" style="margin-top:0.6em;">
+      <button class="btn-go" id="btn-clean-rooms">▶ Limpiar selección</button>
     </div>
-  </section>
-</main>
-<div class="version">interfaz web v5</div>
+
+    <h3>Rutinas</h3>
+    <div class="row"><button class="btn-pill" id="btn-load-favs">↻ Actualizar</button></div>
+    <ul id="favs-list"><li class="empty">Sin cargar.</li></ul>
+    <div class="row" style="margin-top:0.6em;">
+      <button class="btn-go" id="btn-start-fav">▶ Iniciar seleccionada</button>
+    </div>
+
+    <h3>Programaciones</h3>
+    <div class="row"><button class="btn-pill" id="btn-load-scheds">↻ Actualizar</button></div>
+    <table>
+      <thead><tr><th>Nombre</th><th>Hora</th><th>Días</th><th>Activa</th></tr></thead>
+      <tbody id="scheds-body"><tr><td colspan="4" class="empty">Sin cargar.</td></tr></tbody>
+    </table>
+
+    <h3>Mantenimiento</h3>
+    <div class="row">
+      <button class="btn-pill" data-cmd="evac">🗑 Vaciar depósito</button>
+      <button class="btn-pill" data-cmd="washpad">💧 Lavar pad</button>
+      <button class="btn-pill" data-cmd="drypad">🌡 Secar pad</button>
+      <button class="btn-pill" data-cmd="flrefill">💦 Rellenar agua</button>
+    </div>
+
+    <h3>Registro de actividad</h3>
+    <div id="log"></div>
+
+    <a class="classic" href="/classic.html">Abrir interfaz clásica (ventanas y pestañas)</a>
+  </div>
+</div>
 
 <script>
 const $ = (id) => document.getElementById(id);
-const C = 2 * Math.PI * 34;
+const stage = $("stage");
+const C = 2 * Math.PI * 30;
 const PHASES = {
   "charge": "Cargando", "run": "Limpiando", "stop": "En reposo", "pause": "En pausa",
   "hmUsrDock": "Volviendo a la base", "hmMidMsn": "Volviendo (media misión)",
@@ -285,6 +248,12 @@ const CYCLES = {
 };
 let rooms = [];
 let favorites = [];
+
+function fit() {
+  stage.style.fontSize = (stage.clientWidth / 100) + "px";
+}
+window.addEventListener("resize", fit);
+fit();
 
 function log(msg) {
   const t = new Date().toTimeString().slice(0, 5);
@@ -303,22 +272,22 @@ async function api(path, body) {
 
 function ring(el, frac, color, icon, value, label) {
   const off = C * (1 - Math.max(0, Math.min(1, frac)));
+  const R = 4.6;
   el.innerHTML = `
-    <svg width="100" height="100">
-      <circle cx="50" cy="50" r="36" stroke="var(--ring)" stroke-width="9" fill="#fff"/>
-      <circle cx="50" cy="50" r="36" stroke="${color}" stroke-width="9" fill="none"
+    <svg width="${R * 2}em" height="${R * 2}em" viewBox="0 0 100 100" style="width:${R * 2}em;height:${R * 2}em;">
+      <circle cx="50" cy="50" r="30" stroke="var(--ring)" stroke-width="11" fill="#fff"/>
+      <circle cx="50" cy="50" r="30" stroke="${color}" stroke-width="11" fill="none"
         stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${off}"
         transform="rotate(-90 50 50)"/>
-      <text x="50" y="46" text-anchor="middle" font-size="17">${icon}</text>
-      <text x="50" y="68" text-anchor="middle" font-size="14" font-weight="700"
+      <text x="50" y="46" text-anchor="middle" font-size="26">${icon}</text>
+      <text x="50" y="72" text-anchor="middle" font-size="22" font-weight="700"
         fill="var(--text)" font-family="inherit">${value}</text>
     </svg>
     <div class="lbl">${label}</div>`;
 }
 
 function setConn(ok) {
-  $("conn-dot").className = "dot " + (ok ? "ok" : "bad");
-  $("conn-text").textContent = ok ? "En línea" : "Sin conexión";
+  $("conn-dot").className = ok ? "ok" : "bad";
   ring($("ring-conn-box"), ok ? 1 : 0, ok ? "var(--ok)" : "var(--bad)", "📶", ok ? "OK" : "Sin", "Conexión");
 }
 
@@ -333,6 +302,9 @@ function updateStatus(st) {
   } else if (m.phase) {
     line.textContent = "✓ " + (PHASES[m.phase] || m.phase);
     line.classList.add(m.phase === "run" || m.phase === "charge" ? "ok" : "warn");
+  } else {
+    line.textContent = "Robot en línea";
+    line.classList.add("ok");
   }
   const bat = st.batPct;
   if (bat !== undefined && bat !== null) {
@@ -347,16 +319,9 @@ function updateStatus(st) {
   else if (bin.full) ring($("ring-bin-box"), 1, "var(--warn)", "🗑", "Lleno", "Depósito");
   else if (bin.present === false) ring($("ring-bin-box"), 0, "var(--bad)", "🗑", "Ausente", "Depósito");
   else ring($("ring-bin-box"), 1, "var(--ok)", "🗑", "OK", "Depósito");
-
-  const lines = [];
-  if (st.name) lines.push("Nombre     " + st.name);
-  if (st.sku) lines.push("Modelo     " + st.sku);
-  if (st.softwareVer) lines.push("Firmware   " + st.softwareVer);
-  if (bat !== undefined && bat !== null) lines.push("Batería    " + bat + "%");
-  if (m.phase) lines.push("Estado     " + (PHASES[m.phase] || m.phase));
-  if (m.cycle) lines.push("Ciclo      " + (CYCLES[m.cycle] || m.cycle));
-  if (m.error !== undefined) lines.push("Error      " + (m.error === 0 ? "Sin errores" : m.error));
-  $("details").textContent = lines.join("\n") || "Aún no hay estado del robot.";
+  if (m.phase === "run" || m.phase === "charge") {
+    log("Estado: " + (PHASES[m.phase] || m.phase) + (bat !== undefined ? " · batería " + bat + "%" : ""));
+  }
 }
 
 async function refresh() {
@@ -365,6 +330,8 @@ async function refresh() {
     updateStatus(data.status || {});
   } catch (e) {
     setConn(false);
+    $("statusline").textContent = "Sin conexión con el robot";
+    $("statusline").className = "bad";
   }
 }
 
@@ -389,7 +356,7 @@ function bindRound(id, cmd, label) {
     try {
       if (cmd === "dock") {
         await api("/api/dock-retry", {});
-        log("→ Reintentos de vuelta a base en marcha; observa el estado");
+        log("→ Reintentos de vuelta a base en marcha");
       } else {
         await api("/api/command", {cmd});
         log("✓ Enviado: " + label);
@@ -398,7 +365,7 @@ function bindRound(id, cmd, label) {
   });
 }
 
-document.querySelectorAll(".maint .btn-pill").forEach(btn => {
+document.querySelectorAll("#drawer .btn-pill[data-cmd]").forEach(btn => {
   btn.addEventListener("click", async () => {
     const cmd = btn.dataset.cmd;
     log("→ " + cmd);
@@ -409,23 +376,13 @@ document.querySelectorAll(".maint .btn-pill").forEach(btn => {
   });
 });
 
-document.querySelectorAll("#nav button").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll("#nav button").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    document.querySelectorAll(".view").forEach(v => { v.classList.remove("active"); v.style.display = "none"; });
-    const view = $("view-" + btn.dataset.view);
-    view.classList.add("active");
-    view.style.display = btn.dataset.view === "control" ? "flex" : "block";
-  });
-});
-
 $("btn-start").addEventListener("click", startCleaning);
 bindRound("btn-pause", "pause", "Pausar");
 bindRound("btn-resume", "resume", "Reanudar");
 bindRound("btn-stop", "stop", "Detener");
 bindRound("btn-dock", "dock", "Volver a la base");
 bindRound("btn-find", "find", "Localizar");
+$("gear-hotspot").addEventListener("click", () => $("drawer").classList.toggle("open"));
 
 $("btn-load-rooms").addEventListener("click", async () => {
   try {
@@ -501,11 +458,6 @@ $("btn-load-scheds").addEventListener("click", async () => {
     });
     log(`✓ ${rows.length} programación(es) cargadas`);
   } catch (e) { log("✗ No se pudieron cargar programaciones: " + e.message); }
-});
-
-$("btn-gear").addEventListener("click", () => {
-  const det = $("details");
-  det.style.display = det.style.display === "none" ? "block" : "none";
 });
 
 ring($("ring-bat-box"), 0, "var(--dim)", "🔋", "—", "Batería");
