@@ -44,6 +44,12 @@
   nav button:hover { background: var(--soft); color: var(--text); }
   nav button.active { background: var(--ring); color: var(--green); font-weight: 600; }
   .conn { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--dim); margin-left: 12px; }
+  .gear {
+    border: none; background: var(--soft); font-size: 15px; cursor: pointer;
+    width: 34px; height: 34px; border-radius: 50%; margin-left: 10px;
+    transition: background .15s;
+  }
+  .gear:hover { background: var(--ring); }
   .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--dim); }
   .dot.ok { background: var(--ok); }
   .dot.bad { background: var(--bad); }
@@ -54,7 +60,7 @@
   .statusline.ok { color: var(--green); }
   .statusline.warn { color: var(--warn); }
   .statusline.bad { color: var(--bad); }
-  .robot-img { display: block; width: 190px; margin: 26px 0 24px; filter: drop-shadow(0 14px 18px rgba(40, 50, 30, 0.18)); }
+  .robot-img { display: block; width: 250px; margin: 20px 0 10px; filter: drop-shadow(0 16px 16px rgba(40, 50, 30, 0.10)); }
   .maint-card {
     background: var(--card); border-radius: 22px; padding: 20px 24px;
     box-shadow: 0 10px 30px rgba(50, 60, 35, 0.08);
@@ -159,6 +165,7 @@
     <button data-view="programaciones">Programaciones</button>
   </nav>
   <span class="conn"><span class="dot" id="conn-dot"></span><span id="conn-text">Conectando…</span></span>
+  <button class="gear" id="btn-gear" title="Detalles del robot">⚙️</button>
 </div>
 
 <main>
@@ -166,7 +173,7 @@
     <div class="scene">
       <h1>Tu casa, en calma</h1>
       <div class="statusline" id="statusline">Esperando estado del robot…</div>
-      <img class="robot-img" src="/robot.png?v=4" alt="Roomba">
+      <img class="robot-img" src="/robot.png?v=5" alt="Roomba">
       <div class="maint-card">
         <div class="section-label">ESTADO DE MANTENIMIENTO</div>
         <div class="rings">
@@ -261,7 +268,7 @@
     </div>
   </section>
 </main>
-<div class="version">interfaz web v4</div>
+<div class="version">interfaz web v5</div>
 
 <script>
 const $ = (id) => document.getElementById(id);
@@ -297,13 +304,13 @@ async function api(path, body) {
 function ring(el, frac, color, icon, value, label) {
   const off = C * (1 - Math.max(0, Math.min(1, frac)));
   el.innerHTML = `
-    <svg width="92" height="92">
-      <circle cx="46" cy="46" r="34" stroke="var(--ring)" stroke-width="7" fill="#fff"/>
-      <circle cx="46" cy="46" r="34" stroke="${color}" stroke-width="7" fill="none"
+    <svg width="100" height="100">
+      <circle cx="50" cy="50" r="36" stroke="var(--ring)" stroke-width="9" fill="#fff"/>
+      <circle cx="50" cy="50" r="36" stroke="${color}" stroke-width="9" fill="none"
         stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${off}"
-        transform="rotate(-90 46 46)"/>
-      <text x="46" y="42" text-anchor="middle" font-size="15">${icon}</text>
-      <text x="46" y="62" text-anchor="middle" font-size="13" font-weight="700"
+        transform="rotate(-90 50 50)"/>
+      <text x="50" y="46" text-anchor="middle" font-size="17">${icon}</text>
+      <text x="50" y="68" text-anchor="middle" font-size="14" font-weight="700"
         fill="var(--text)" font-family="inherit">${value}</text>
     </svg>
     <div class="lbl">${label}</div>`;
@@ -494,6 +501,11 @@ $("btn-load-scheds").addEventListener("click", async () => {
     });
     log(`✓ ${rows.length} programación(es) cargadas`);
   } catch (e) { log("✗ No se pudieron cargar programaciones: " + e.message); }
+});
+
+$("btn-gear").addEventListener("click", () => {
+  const det = $("details");
+  det.style.display = det.style.display === "none" ? "block" : "none";
 });
 
 ring($("ring-bat-box"), 0, "var(--dim)", "🔋", "—", "Batería");
