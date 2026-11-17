@@ -2,6 +2,20 @@
 import os
 import sys
 import traceback
+from pathlib import Path
+
+ERROR_LOG = Path.home() / ".roomba_app" / "ultimo_error.txt"
+
+
+def save_and_summarize(error: str) -> str:
+    try:
+        ERROR_LOG.parent.mkdir(parents=True, exist_ok=True)
+        ERROR_LOG.write_text(error)
+    except OSError:
+        pass
+    lines = error.strip().splitlines()
+    tail = lines[-12:]
+    return "\n".join(tail) + f"\n\n(Error completo guardado en: {ERROR_LOG})"
 
 
 def run():
@@ -32,13 +46,14 @@ except SystemExit:
     raise
 except BaseException:
     error = traceback.format_exc()
+    summary = save_and_summarize(error)
     try:
         import tkinter as tk
         from tkinter import messagebox
 
         root = tk.Tk()
         root.withdraw()
-        messagebox.showerror("Roomba", error)
+        messagebox.showerror("Roomba", summary)
     except Exception:
         print(error, file=sys.stderr)
     sys.exit(1)
