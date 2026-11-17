@@ -44,11 +44,22 @@ class PrimeBackend:
     def _call(self, coro, timeout: float = 30):
         return asyncio.run_coroutine_threadsafe(coro, self._loop).result(timeout)
 
+    @staticmethod
+    def _ssl_context():
+        try:
+            import certifi
+
+            import ssl
+            return ssl.create_default_context(cafile=certifi.where())
+        except Exception:
+            return None
+
     async def _connect_async(self):
         import aiohttp
         from roombapy_prime import PrimeFactory
 
-        self._aiohttp_session = aiohttp.ClientSession()
+        connector = aiohttp.TCPConnector(ssl=self._ssl_context())
+        self._aiohttp_session = aiohttp.ClientSession(connector=connector)
         self.robot = await PrimeFactory.create_prime_robot(
             self._aiohttp_session,
             self._email,
