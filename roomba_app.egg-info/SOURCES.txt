@@ -8,6 +8,8 @@ roomba/prime_backend.py
 roomba/robot.py
 roomba/state.py
 roomba/store.py
+roomba/theme.py
+roomba/webapp.py
 roomba_app.egg-info/PKG-INFO
 roomba_app.egg-info/SOURCES.txt
 roomba_app.egg-info/dependency_links.txt
@@ -22,3 +24,4 @@ tests/test_resolve_blid.py
 tests/test_state.py
 tests/test_store.py
 tests/test_topic_prefix.py
+tests/test_webapp.py
