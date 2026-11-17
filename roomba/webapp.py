@@ -5,7 +5,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 WEB_DIR = Path(__file__).resolve().parent / "web"
-ICON_PATH = Path(__file__).resolve().parent.parent / "assets" / "icon.png"
+ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
+ICON_PATH = ASSETS_DIR / "icon.png"
+ROBOT_PATH = ASSETS_DIR / "robot.png"
 
 DOCK_PHASES = {"hmUsrDock", "hmMidMsn", "hmPostMsn", "charge", "evac"}
 
@@ -71,6 +73,11 @@ class _Handler(BaseHTTPRequestHandler):
                 self._send(200, ICON_PATH.read_bytes(), "image/png")
             else:
                 self._json(404, {"ok": False, "error": "sin icono"})
+        elif path == "/robot.png":
+            if ROBOT_PATH.exists():
+                self._send(200, ROBOT_PATH.read_bytes(), "image/png")
+            else:
+                self._json(404, {"ok": False, "error": "sin imagen de robot"})
         elif path == "/api/status":
             try:
                 self._json(200, {"ok": True, "robot": self.app.robot_name,
