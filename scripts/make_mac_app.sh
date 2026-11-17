@@ -3,7 +3,7 @@ set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VENV_DIR="$PROJECT_DIR/.venv"
-LAUNCHER="$PROJECT_DIR/scripts/roomba_gui_launcher.py"
+LAUNCHER="$PROJECT_DIR/scripts/roomba_web_launcher.py"
 
 if [ ! -x "$VENV_DIR/bin/python" ]; then
   echo "No existe el entorno virtual en $VENV_DIR"
