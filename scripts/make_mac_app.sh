@@ -14,6 +14,7 @@ if [ ! -x "$VENV_DIR/bin/python" ]; then
 fi
 
 APP_DIR="$PROJECT_DIR/Roomba.app"
+INSTALL_DIR="/Applications/Roomba.app"
 mkdir -p "$APP_DIR/Contents/MacOS"
 
 cat > "$APP_DIR/Contents/Info.plist" <<'PLIST'
@@ -39,11 +40,20 @@ exec "$VENV_DIR/bin/python" "$LAUNCHER"
 LAUNCHER
 chmod +x "$APP_DIR/Contents/MacOS/Roomba"
 
-echo ""
-echo "✅ Aplicación creada en: $APP_DIR"
-echo ""
-echo "Para instalarla en Aplicaciones:"
-echo "  mv '$APP_DIR' /Applications/"
+if mv "$APP_DIR" "$INSTALL_DIR" 2>/dev/null; then
+  echo ""
+  echo "✅ Aplicación instalada en: $INSTALL_DIR"
+  echo "   Ya la tienes en Launchpad y en la carpeta Aplicaciones."
+else
+  if [ -d "$INSTALL_DIR" ]; then
+    rm -rf "$INSTALL_DIR" && mv "$APP_DIR" "$INSTALL_DIR" && \
+      echo "" && echo "✅ Aplicación actualizada en: $INSTALL_DIR" && exit 0
+  fi
+  echo ""
+  echo "✅ Aplicación creada en: $APP_DIR"
+  echo "   (No se pudo mover a /Applications; arrástrala a la carpeta"
+  echo "    Aplicaciones con el Finder para instalarla.)"
+fi
 echo ""
 echo "La primera vez que la abras, si macOS muestra un aviso:"
 echo "  clic derecho sobre Roomba.app > Abrir > Abrir"
