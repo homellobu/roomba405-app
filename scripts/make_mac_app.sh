@@ -15,6 +15,7 @@ fi
 
 APP_DIR="$PROJECT_DIR/Roomba.app"
 INSTALL_DIR="/Applications/Roomba.app"
+ICON_SRC="$PROJECT_DIR/assets/icon.png"
 mkdir -p "$APP_DIR/Contents/MacOS"
 
 cat > "$APP_DIR/Contents/Info.plist" <<'PLIST'
@@ -27,12 +28,26 @@ cat > "$APP_DIR/Contents/Info.plist" <<'PLIST'
     <key>CFBundleIdentifier</key>     <string>com.homellobu.roomba-app</string>
     <key>CFBundleVersion</key>        <string>0.1.0</string>
     <key>CFBundleExecutable</key>     <string>Roomba</string>
+    <key>CFBundleIconFile</key>       <string>AppIcon</string>
     <key>CFBundlePackageType</key>    <string>APPL</string>
     <key>LSMinimumSystemVersion</key> <string>11.0</string>
     <key>NSHighResolutionCapable</key> <true/>
 </dict>
 </plist>
 PLIST
+
+if [ -f "$ICON_SRC" ] && command -v iconutil >/dev/null && command -v sips >/dev/null; then
+  ICONSET="$PROJECT_DIR/build/AppIcon.iconset"
+  rm -rf "$ICONSET"
+  mkdir -p "$ICONSET"
+  for s in 16 32 128 256 512; do
+    sips -z $s $s "$ICON_SRC" --out "$ICONSET/icon_${s}x${s}.png" >/dev/null
+    d=$((s * 2))
+    sips -z $d $d "$ICON_SRC" --out "$ICONSET/icon_${s}x${s}@2x.png" >/dev/null
+  done
+  mkdir -p "$APP_DIR/Contents/Resources"
+  iconutil -c icns "$ICONSET" -o "$APP_DIR/Contents/Resources/AppIcon.icns"
+fi
 
 cat > "$APP_DIR/Contents/MacOS/Roomba" <<LAUNCHER
 #!/bin/bash
