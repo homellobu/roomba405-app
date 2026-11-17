@@ -90,6 +90,8 @@ class RoombaGUI:
         theme.apply(self.root)
         self._set_icon()
         self._online = None
+        self._pages = {}
+        self._nav_buttons = {}
         self._build()
         self._show("Control")
         self._schedule_refresh()
@@ -147,8 +149,6 @@ class RoombaGUI:
             "Rutinas": self._build_routines,
             "Programaciones": self._build_schedules,
         }
-        self._pages = {}
-        self._nav_buttons = {}
         for name in NAV_ITEMS:
             page = ttk.Frame(container)
             page.grid(row=0, column=0, sticky="nsew")
