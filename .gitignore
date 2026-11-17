@@ -6,3 +6,5 @@ venv/
 .pytest_cache/
 build/
 dist/
+Roomba.app/
+*.app/
