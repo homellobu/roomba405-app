@@ -1,0 +1,183 @@
+import asyncio
+from dataclasses import dataclass, field
+
+from roomba.prime_backend import PrimeBackend
+
+
+@dataclass
+class FakeRegionType:
+    name: str
+
+
+@dataclass
+class FakeRoom:
+    room_id: str
+    name: str | None
+    region_type: object
+
+
+@dataclass
+class FakeMetadata:
+    rooms_metadata: list = field(default_factory=list)
+
+
+@dataclass
+class FakeVersion:
+    p2map_id: str = "MAP1"
+
+
+@dataclass
+class FakeFavorite:
+    favorite_id: str
+    name: str | None
+    command_defs: list
+
+
+@dataclass
+class FakeScheduleOptions:
+    name: str | None
+    enabled: bool
+    start: object
+
+
+@dataclass
+class FakeSchedule:
+    schedule_id: str
+    options: FakeScheduleOptions
+
+
+@dataclass
+class FakeContainer:
+    household_schedule_id: str
+    schedules: list
+
+
+@dataclass
+class FakeSchedulesResponse:
+    household_schedules: list
+
+
+@dataclass
+class FakeShadow:
+    payload: dict
+
+
+class FakeRobot:
+    blid = "BLID1"
+
+    def __init__(self):
+        self.sent = []
+
+    async def get_active_map_versions(self):
+        return [{"p2map_id": "MAP1", "active_p2mapv_id": "V1", "name": "Casa",
+                 "state": "active", "visible": True}]
+
+    async def get_map_metadata(self, p2map_id):
+        assert p2map_id == "MAP1"
+        return FakeMetadata(rooms_metadata=[
+            FakeRoom("15", "Salón", FakeRegionType("RID")),
+            FakeRoom("16", "Pasillo", "ZID"),
+        ])
+
+    async def send_routine_command_via_cmd_topic(self, command):
+        self.sent.append(command)
+
+    async def send_simple_command(self, command):
+        self.sent.append(command)
+
+    async def get_favorites(self):
+        return [FakeFavorite("F1", "Limpieza rápida", [object()])]
+
+    async def get_user_households(self):
+        return {"household": [{"household_id": "H1"}]}
+
+    async def get_schedules(self, household_id):
+        return FakeSchedulesResponse([FakeContainer("HC1", [
+            FakeSchedule("S1", FakeScheduleOptions("Lunes", True, FakeStart(["mon"], 9, 30))),
+        ])])
+
+
+@dataclass
+class FakeStart:
+    day: list
+    hour: int
+    minute: int
+
+
+def make_backend():
+    backend = PrimeBackend("e", "p", blid="BLID1")
+    backend.robot = FakeRobot()
+
+    def run(coro, timeout=30):
+        return asyncio.run(coro)
+
+    backend._call = run
+    return backend
+
+
+def test_get_rooms():
+    backend = make_backend()
+    rooms = backend.get_rooms()
+    assert rooms == [
+        {"id": "15", "name": "Salón", "type": "RID"},
+        {"id": "16", "name": "Pasillo", "type": "ZID"},
+    ]
+    assert backend._p2map_id == "MAP1"
+
+
+def test_clean_rooms_builds_routine_command():
+    from roombapy_prime.models import MissionCommandType
+
+    backend = make_backend()
+    backend.get_rooms()
+    backend.clean_rooms(
+        [{"id": "15", "name": "Salón", "type": "RID"}],
+        suction="high", pad_wetness=2,
+    )
+    command = backend.robot.sent[0]
+    assert command.command_type == MissionCommandType.START
+    assert command.map_id == "MAP1"
+    assert command.asset_id == "BLID1"
+    assert command.regions[0].region_id == "15"
+    assert command.regions[0].params.suction_level == 3
+    assert command.regions[0].params.pad_wetness.pad_plate == 2
+
+
+def test_start_favorite():
+    from roombapy_prime.models import MissionCommandType
+
+    backend = make_backend()
+    backend.start_favorite("F1")
+    command = backend.robot.sent[0]
+    assert command.favorite_id == "F1"
+    assert command.command_type == MissionCommandType.START
+
+
+def test_get_favorites():
+    backend = make_backend()
+    favorites = backend.get_favorites()
+    assert favorites == [{"id": "F1", "name": "Limpieza rápida", "steps": 1}]
+
+
+def test_get_schedules():
+    backend = make_backend()
+    schedules = backend.get_schedules()
+    assert schedules == [{
+        "id": "S1", "name": "Lunes", "enabled": True,
+        "time": "09:30", "days": "mon",
+    }]
+
+
+def test_get_status_merges_shadows():
+    class ShadowRobot(FakeRobot):
+        async def get_state(self):
+            return FakeShadow({"sku": "G185040"})
+
+        async def get_named_shadow(self, name):
+            assert name == "ro-currentstate"
+            return FakeShadow({"batPct": 88})
+
+    backend = make_backend()
+    backend.robot = ShadowRobot()
+    status = backend.get_status()
+    assert status == {"sku": "G185040", "batPct": 88}

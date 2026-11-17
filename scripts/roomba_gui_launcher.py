@@ -1,18 +1,29 @@
 #!/usr/bin/env python3
+import os
 import sys
 import traceback
 
 
 def run():
-    from roomba.cli import connect_robot
+    from roomba.cli import login_flow, resolve_blid
     from roomba.cloud import IRobotCloud
     from roomba.gui import RoombaGUI, pick_robot_dialog
+    from roomba.prime_backend import PrimeBackend
     from roomba.store import Store
 
+    country = os.environ.get("ROOMBA_COUNTRY", "ES")
     store = Store()
-    cloud = IRobotCloud()
-    robot = connect_robot(store, cloud, picker=pick_robot_dialog)
-    RoombaGUI(robot).run()
+    cloud = IRobotCloud(country=country)
+    session = login_flow(store, cloud)
+    blid = resolve_blid(store, session)
+    if blid is None:
+        blid = pick_robot_dialog(session["robots"])
+        store.set_blid(blid)
+    robot_name = session["robots"][blid].get("name", "Roomba")
+
+    backend = PrimeBackend(store.email, store.password, country=country, blid=blid)
+    backend.connect()
+    RoombaGUI(backend, robot_name=robot_name).run()
 
 
 try:

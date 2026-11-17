@@ -36,6 +36,26 @@ En la GUI usa el botón **"Volver a la base (con reintentos)"**. Si agota los
 reintentos, el robot probablemente esté demasiado lejos o desorientado:
 acércalo a la base y vuelve a pulsarlo.
 
+## Funciones
+
+La app usa como motor la librería [roombapy-prime](https://github.com/johnnyh1975/roombapy-prime)
+(protocolo V4/Prime verificado en hardware real, incluida la serie G18 a la
+que pertenece el 405 Combo).
+
+| Función | Estado |
+|---|---|
+| Estado en vivo (batería, fase, errores) | ✅ |
+| Comandos básicos (limpiar, pausa, parar, base, localizar) | ✅ confirmado en hardware |
+| Volver a la base con reintentos | ✅ |
+| Limpiar habitaciones concretas (del mapa) | ✅ confirmado en hardware |
+| Potencia de succión (baja/media/alta/turbo) | ⚠️ forma confirmada; efecto real sin verificar por la comunidad |
+| Fregado (wetness del pad) | ⚠️ forma confirmada; efecto real sin verificar |
+| Base AutoWash: evacuar, lavar pad, secar pad, rellenar agua | ⚠️ comandos existentes en el protocolo; sin verificar en todos los modelos |
+| Rutinas/favoritos: listar e iniciar | ✅ (crear/editar se hace en la app de iRobot) |
+| Programaciones: listar | ✅ (crear/editar se hace en la app de iRobot) |
+| Mapa visual | ❌ pendiente (la librería soporta descargar el mapa; falta renderizarlo) |
+| Elegir entre varios robots | ✅ selector gráfico, elección recordada |
+
 ## Instalación
 
 Requiere Python 3.10+.

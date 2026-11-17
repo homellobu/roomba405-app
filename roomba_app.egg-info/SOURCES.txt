@@ -4,6 +4,7 @@ roomba/__init__.py
 roomba/cli.py
 roomba/cloud.py
 roomba/gui.py
+roomba/prime_backend.py
 roomba/robot.py
 roomba/state.py
 roomba/store.py
@@ -16,6 +17,8 @@ roomba_app.egg-info/top_level.txt
 tests/test_cloud.py
 tests/test_dock_retry.py
 tests/test_gui.py
+tests/test_prime_backend.py
+tests/test_resolve_blid.py
 tests/test_state.py
 tests/test_store.py
 tests/test_topic_prefix.py
