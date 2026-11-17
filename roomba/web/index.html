@@ -64,14 +64,13 @@
   .btn-primary:active { transform: scale(0.98); }
   .rounds { display: flex; gap: 1.2em; justify-content: center; margin-top: 1.2em; padding-bottom: 0.4em; align-items: center; }
   .round {
-    width: 3.7em; height: 3.7em; border-radius: 50%; border: 1px solid #efece0; cursor: pointer;
-    background: #fff; font-size: 1em;
+    width: 3.4em; height: 3.4em; border-radius: 50%; border: 1px solid #efece0; cursor: pointer;
+    background: #fff;
     box-shadow: 0 0.35em 1em rgba(60, 65, 40, 0.14);
     display: flex; align-items: center; justify-content: center;
-    font-size: 1.5em;
     transition: transform .1s, box-shadow .15s;
   }
-  .round.small { width: 2.9em; height: 2.9em; font-size: 1.15em; }
+  .round svg { width: 1.5em; height: 1.5em; display: block; color: var(--text); }
   .round:hover { box-shadow: 0 0.5em 1.4em rgba(60, 65, 40, 0.22); }
   .round:active { transform: scale(0.93); }
   .maintcard {
@@ -179,12 +178,11 @@
     </div>
     <button class="btn-primary" id="btn-start">▶&nbsp; Empezar limpieza</button>
     <div class="rounds">
-      <button class="round" id="btn-pause" title="Pausar">⏸</button>
-      <button class="round" id="btn-dock" title="Volver a la base (con reintentos)">🏠</button>
-      <button class="round" id="btn-find" title="Localizar">📍</button>
-      <button class="round small" id="btn-resume" title="Reanudar">⏵</button>
-      <button class="round small" id="btn-stop" title="Detener">⏹</button>
-    </div>
+      <button class="round" id="btn-pause" title="Pausar"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6.6" y="5" width="3.8" height="14" rx="1.5"/><rect x="13.6" y="5" width="3.8" height="14" rx="1.5"/></svg></button>
+      <button class="round" id="btn-dock" title="Volver a la base (con reintentos)"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3.8 3.5 11h2.2v8.2h4.8v-5.4h3v5.4h4.8V11h2.2z"/></svg></button>
+      <button class="round" id="btn-find" title="Localizar"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.2a6.6 6.6 0 0 0-6.6 6.6c0 4.9 6.6 13 6.6 13s6.6-8.1 6.6-13A6.6 6.6 0 0 0 12 2.2z"/><circle cx="12" cy="8.8" r="2.3" fill="#fff"/></svg></button>
+      <button class="round" id="btn-resume" title="Reanudar"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.4v13.2c0 .8.9 1.3 1.6.9l10.2-6.6c.6-.4.6-1.4 0-1.8L9.6 4.5c-.7-.4-1.6.1-1.6.9z"/></svg></button>
+      <button class="round" id="btn-stop" title="Detener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6.3" y="6.3" width="11.4" height="11.4" rx="2.6"/></svg></button>    </div>
     <div class="maint-mini">
       <div class="overlay-label">Mantenimiento</div>
       <div class="row">
