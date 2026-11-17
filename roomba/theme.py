@@ -45,10 +45,15 @@ def apply(root: tk.Tk):
               foreground=[("selected", TEXT)])
 
     style.configure("TButton", background=SURFACE_2, foreground=TEXT,
-                    borderwidth=0, padding=(12, 8), font=FONT)
-    style.map("TButton", background=[("active", BORDER), ("pressed", BORDER)])
-    style.configure("Accent.TButton", background=ACCENT, foreground="#ffffff")
-    style.map("Accent.TButton", background=[("active", ACCENT_DARK), ("pressed", ACCENT_DARK)])
+                    borderwidth=0, focusthickness=0, padding=(16, 9), font=FONT)
+    style.map("TButton",
+              background=[("active", BORDER), ("pressed", BORDER)],
+              foreground=[("active", TEXT), ("pressed", TEXT)])
+    style.configure("Accent.TButton", background=ACCENT, foreground="#ffffff",
+                    borderwidth=0, focusthickness=0, padding=(16, 9), font=FONT)
+    style.map("Accent.TButton",
+              background=[("active", ACCENT_DARK), ("pressed", ACCENT_DARK)],
+              foreground=[("active", "#ffffff"), ("pressed", "#ffffff")])
 
     style.configure("TLabelframe", background=SURFACE, foreground=TEXT_DIM, borderwidth=0)
     style.configure("TLabelframe.Label", background=SURFACE, foreground=TEXT_DIM, font=FONT_SMALL)
@@ -75,19 +80,10 @@ def card(parent, **kwargs):
 
 
 def flat_button(parent, text, command, accent=False, width=None):
-    normal_bg = ACCENT if accent else SURFACE_2
-    hover_bg = ACCENT_DARK if accent else BORDER
-    btn = tk.Button(
-        parent, text=text, command=command, bd=0, relief="flat", highlightthickness=0,
-        bg=normal_bg,
-        fg="#ffffff" if accent else TEXT,
-        activebackground=hover_bg,
-        activeforeground="#ffffff" if accent else TEXT,
-        font=FONT, padx=16, pady=9, cursor="hand2", width=width,
+    return ttk.Button(
+        parent, text=text, command=command, width=width,
+        style="Accent.TButton" if accent else "TButton",
     )
-    btn.bind("<Enter>", lambda _: btn.configure(bg=hover_bg))
-    btn.bind("<Leave>", lambda _: btn.configure(bg=normal_bg))
-    return btn
 
 
 def listbox(parent, **kwargs):
