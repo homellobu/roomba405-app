@@ -9,16 +9,22 @@ from .robot import DOCK_PHASES
 from .state import PHASE, render_state
 
 BUTTON_LABELS = {
-    "start": "▶  Limpiar toda la casa",
+    "start": "▶  Empezar limpieza",
     "pause": "⏸  Pausar",
     "stop": "⏹  Detener",
-    "resume": "▶  Reanudar",
+    "resume": "⏵  Reanudar",
     "dock": "🏠  Volver a la base",
     "find": "📍  Localizar",
     "evac": "🗑  Vaciar depósito",
 }
 
-CONTROL_ROW = ["pause", "resume", "stop", "dock", "find"]
+ROUND_BUTTONS = [
+    ("pause", "⏸"),
+    ("resume", "⏵"),
+    ("stop", "⏹"),
+    ("dock", "🏠"),
+    ("find", "📍"),
+]
 
 DOCK_COMMANDS = {
     "🗑  Vaciar depósito": "evac",
@@ -39,12 +45,7 @@ ICON_PATH = Path(__file__).resolve().parent.parent / "assets" / "icon.png"
 
 NAV_ITEMS = ["Control", "Habitaciones", "Rutinas", "Programaciones"]
 
-NAV_ICONS = {
-    "Control": "⌂",
-    "Habitaciones": "▦",
-    "Rutinas": "◷",
-    "Programaciones": "▤",
-}
+ALL_ROOMS = "Todas las habitaciones"
 
 
 def pick_robot_dialog(robots: dict) -> str:
@@ -86,12 +87,13 @@ class RoombaGUI:
         self.robot_name = robot_name
         self.root = tk.Tk()
         self.root.title(f"Roomba — {robot_name}")
-        self.root.geometry("920x700")
+        self.root.geometry("1020x700")
         theme.apply(self.root)
         self._set_icon()
         self._online = None
         self._pages = {}
         self._nav_buttons = {}
+        self._rooms = []
         self._build()
         self._show("Control")
         self._schedule_refresh()
@@ -104,41 +106,26 @@ class RoombaGUI:
             pass
 
     def _build(self):
-        self._build_sidebar()
+        topbar = ttk.Frame(self.root, padding=(20, 12))
+        topbar.pack(fill="x")
 
-        main = ttk.Frame(self.root, padding=(18, 14))
-        main.pack(side="left", fill="both", expand=True)
+        tk.Label(topbar, text="Roomba", bg=theme.BG, fg=theme.TEXT,
+                 font=("Helvetica Neue", 15, "bold")).pack(side="left")
 
-        header = ttk.Frame(main)
-        header.pack(fill="x", pady=(0, 12))
-        ttk.Label(header, text=f"Roomba — {self.robot_name}",
-                  style="Title.TLabel").pack(side="left")
-
-        self.phase_label = tk.Label(header, text=" — ", bg=theme.SURFACE_2,
-                                    fg=theme.TEXT_DIM, font=theme.FONT_PHASE,
-                                    padx=14, pady=5, bd=0)
-        self.phase_label.pack(side="right", padx=(10, 0))
-
-        battery_box = ttk.Frame(header)
-        battery_box.pack(side="right", padx=(10, 0))
-        self.battery_label = ttk.Label(battery_box, text="Batería —",
-                                       style="Dim.TLabel")
-        self.battery_label.pack(side="left", padx=(0, 8))
-        self.battery_canvas = tk.Canvas(battery_box, width=130, height=10,
-                                        bg=theme.BG, highlightthickness=0, bd=0)
-        self.battery_canvas.pack(side="left")
-
-        status_box = ttk.Frame(header)
-        status_box.pack(side="right", padx=(10, 14))
-        self.status_dot = tk.Canvas(status_box, width=11, height=11,
+        self.status_dot = tk.Canvas(topbar, width=11, height=11,
                                     bg=theme.BG, highlightthickness=0, bd=0)
-        self.status_dot.pack(side="left", padx=(0, 6))
+        self.status_dot.pack(side="left", padx=(18, 5), pady=4)
         self.status_dot.create_oval(1, 1, 10, 10, fill=theme.TEXT_DIM, width=0)
-        self.online_label = ttk.Label(status_box, text="Conectando…",
+        self.online_label = ttk.Label(topbar, text="Conectando…",
                                       style="Dim.TLabel")
         self.online_label.pack(side="left")
 
-        container = ttk.Frame(main)
+        for name in reversed(NAV_ITEMS):
+            btn = theme.nav_button(topbar, name, lambda n=name: self._show(n))
+            btn.pack(side="right", padx=(4, 0))
+            self._nav_buttons[name] = btn
+
+        container = ttk.Frame(self.root)
         container.pack(fill="both", expand=True)
         container.columnconfigure(0, weight=1)
         container.rowconfigure(0, weight=1)
@@ -150,28 +137,10 @@ class RoombaGUI:
             "Programaciones": self._build_schedules,
         }
         for name in NAV_ITEMS:
-            page = ttk.Frame(container)
+            page = ttk.Frame(container, padding=(20, 6, 20, 16))
             page.grid(row=0, column=0, sticky="nsew")
             pages[name](page)
             self._pages[name] = page
-
-    def _build_sidebar(self):
-        sidebar = ttk.Frame(self.root, style="Sidebar.TFrame", width=180)
-        sidebar.pack(side="left", fill="y")
-        sidebar.pack_propagate(False)
-
-        tk.Label(sidebar, text="  Roomba", bg=theme.SIDEBAR, fg=theme.TEXT,
-                 font=theme.FONT_TITLE, anchor="w", pady=14).pack(fill="x")
-
-        for name in NAV_ITEMS:
-            label = f"{NAV_ICONS[name]}  {name}"
-            btn = theme.nav_button(sidebar, label,
-                                   lambda n=name: self._show(n))
-            btn.pack(fill="x", padx=10, pady=2)
-            self._nav_buttons[name] = btn
-
-        ttk.Label(sidebar, text=self.robot_name,
-                  style="Sidebar.Dim.TLabel").pack(side="bottom", pady=12)
 
     def _show(self, name):
         for nav_name, btn in self._nav_buttons.items():
@@ -179,47 +148,101 @@ class RoombaGUI:
                           else "Nav.TButton")
         self._pages[name].tkraise()
 
-    def _section(self, parent, title=None):
-        card = theme.card(parent)
-        card.pack(fill="x", pady=(0, 12))
-        inner = ttk.Frame(card, style="Card.TFrame", padding=14)
-        inner.pack(fill="both", expand=True)
-        if title:
-            ttk.Label(inner, text=title, style="Card.Dim.TLabel").pack(
-                anchor="w", pady=(0, 8))
-        return inner
-
     def _build_control(self, parent):
-        status_inner = self._section(parent)
-        self.status_text = theme.text_widget(status_inner, height=9)
+        left = ttk.Frame(parent)
+        left.pack(side="left", fill="both", expand=True, padx=(0, 18))
+
+        ttk.Label(left, text="Tu casa, en calma",
+                  style="Title.TLabel").pack(anchor="w", pady=(6, 2))
+        self.phase_line = tk.Label(left, text="Esperando estado del robot…",
+                                   bg=theme.BG, fg=theme.TEXT_DIM, font=theme.FONT_PHASE)
+        self.phase_line.pack(anchor="w", pady=(0, 10))
+
+        if ICON_PATH.exists():
+            try:
+                self._scene_photo = tk.PhotoImage(file=str(ICON_PATH))
+                factor = max(1, self._scene_photo.width() // 180)
+                self._scene_photo = self._scene_photo.subsample(factor, factor)
+                tk.Label(left, image=self._scene_photo, bg=theme.BG,
+                         bd=0).pack(pady=(0, 14))
+            except Exception:
+                pass
+
+        ttk.Label(left, text="ESTADO DE MANTENIMIENTO",
+                  style="Dim.TLabel").pack(anchor="w", pady=(0, 6))
+        circles = ttk.Frame(left)
+        circles.pack(anchor="w")
+        self._circles = {}
+        for label in ("Batería", "Depósito", "Conexión"):
+            canvas = theme.ring(circles)
+            canvas.pack(side="left", padx=(0, 18))
+            self._circles[label] = canvas
+
+        ttk.Label(left, text="DETALLES DEL ROBOT",
+                  style="Dim.TLabel").pack(anchor="w", pady=(14, 6))
+        self.status_text = theme.text_widget(left, height=6)
         self.status_text.pack(fill="x")
 
-        theme.flat_button(parent, BUTTON_LABELS["start"],
-                          lambda: self._dispatch_simple("start"),
-                          accent=True).pack(fill="x", ipady=6, pady=(2, 10))
+        panel = theme.card(parent)
+        panel.pack(side="left", fill="both", expand=False)
+        panel.configure(width=380)
+        panel.pack_propagate(False)
+        inner = ttk.Frame(panel, style="Card.TFrame", padding=18)
+        inner.pack(fill="both", expand=True)
 
-        row = ttk.Frame(parent)
-        row.pack(fill="x")
-        for i, cmd in enumerate(CONTROL_ROW):
-            row.columnconfigure(i, weight=1)
-            theme.flat_button(row, BUTTON_LABELS[cmd],
-                              lambda c=cmd: self._dispatch_simple(c)).grid(
-                row=0, column=i, sticky="ew", padx=3)
+        ttk.Label(inner, text="SELECCIONA UNA HABITACIÓN",
+                  style="Card.Dim.TLabel").pack(anchor="w", pady=(0, 6))
+        self.room_var = tk.StringVar(value=ALL_ROOMS)
+        self.room_combo = ttk.Combobox(inner, textvariable=self.room_var,
+                                       state="readonly", width=27,
+                                       values=[ALL_ROOMS])
+        self.room_combo.pack(fill="x", pady=(0, 10))
 
-        theme.flat_button(parent, "🏠  Volver a la base (con reintentos)",
-                          self._dispatch_dock_retry).pack(fill="x", pady=(10, 0))
+        options = ttk.Frame(inner, style="Card.TFrame")
+        options.pack(fill="x", pady=(0, 12))
+        ttk.Label(options, text="Succión", style="Card.Dim.TLabel").grid(
+            row=0, column=0, padx=(0, 6))
+        self.suction_var = tk.StringVar(value=SUCTION_OPTIONS[""])
+        ttk.Combobox(options, textvariable=self.suction_var, state="readonly",
+                     width=12, values=list(SUCTION_OPTIONS.values())).grid(
+            row=0, column=1, padx=(0, 14))
+        ttk.Label(options, text="Fregado", style="Card.Dim.TLabel").grid(
+            row=0, column=2, padx=(0, 6))
+        self.pad_var = tk.StringVar(value=PAD_OPTIONS[""])
+        ttk.Combobox(options, textvariable=self.pad_var, state="readonly",
+                     width=12, values=list(PAD_OPTIONS.values())).grid(row=0, column=3)
+        options.columnconfigure(4, weight=1)
 
-        maint = self._section(parent, "Mantenimiento")
+        theme.flat_button(inner, BUTTON_LABELS["start"],
+                          self._dispatch_start_cleaning,
+                          accent=True).pack(fill="x", ipady=8, pady=(0, 14))
+
+        rounds = ttk.Frame(inner, style="Card.TFrame")
+        rounds.pack(anchor="center", pady=(0, 14))
+        for cmd, icon in ROUND_BUTTONS:
+            if cmd == "dock":
+                action = self._dispatch_dock_retry
+            else:
+                action = lambda c=cmd: self._dispatch_simple(c)
+            theme.circle_button(rounds, icon, action,
+                                bg=theme.SURFACE).pack(side="left", padx=5)
+
+        ttk.Label(inner, text="MANTENIMIENTO",
+                  style="Card.Dim.TLabel").pack(anchor="w", pady=(0, 6))
+        maint = ttk.Frame(inner, style="Card.TFrame")
+        maint.pack(fill="x", pady=(0, 12))
         for i, (label, cmd) in enumerate(DOCK_COMMANDS.items()):
-            maint.columnconfigure(i, weight=1)
+            maint.columnconfigure(i % 2, weight=1)
             theme.flat_button(maint, label,
                               lambda c=cmd: self._dispatch_dock_command(c)).grid(
-                row=0, column=i, sticky="ew", padx=3)
+                row=i // 2, column=i % 2, sticky="ew", padx=3, pady=3)
 
-        log_inner = self._section(parent, "Registro de actividad")
+        ttk.Label(inner, text="REGISTRO DE ACTIVIDAD",
+                  style="Card.Dim.TLabel").pack(anchor="w", pady=(0, 6))
         self.log_text = scrolledtext.ScrolledText(
-            log_inner, height=6, state="disabled", bg=theme.SURFACE, fg=theme.TEXT,
-            highlightthickness=0, bd=0, font=theme.FONT_MONO, padx=4, pady=0)
+            inner, height=6, state="disabled", bg=theme.SURFACE, fg=theme.TEXT,
+            highlightthickness=1, highlightbackground=theme.BORDER, bd=0,
+            font=theme.FONT_MONO, padx=10, pady=8)
         self.log_text.pack(fill="both", expand=True)
 
     def _build_rooms(self, parent):
@@ -228,29 +251,33 @@ class RoombaGUI:
         theme.flat_button(top, "↻  Actualizar habitaciones",
                           self._dispatch_load_rooms).pack(side="left")
 
-        options = self._section(parent, "Opciones de limpieza")
-        ttk.Label(options, text="Succión", style="Card.Dim.TLabel").grid(
+        options = theme.card(parent)
+        options.pack(fill="x", pady=(0, 12))
+        inner = ttk.Frame(options, style="Card.TFrame", padding=14)
+        inner.pack(fill="x")
+        ttk.Label(inner, text="Succión", style="Card.Dim.TLabel").grid(
             row=0, column=0, padx=(0, 6))
-        self.suction_var = tk.StringVar(value=SUCTION_OPTIONS[""])
-        ttk.Combobox(options, textvariable=self.suction_var, state="readonly",
+        ttk.Combobox(inner, textvariable=self.suction_var, state="readonly",
                      width=14, values=list(SUCTION_OPTIONS.values())).grid(
             row=0, column=1, padx=(0, 20))
-        ttk.Label(options, text="Fregado", style="Card.Dim.TLabel").grid(
+        ttk.Label(inner, text="Fregado", style="Card.Dim.TLabel").grid(
             row=0, column=2, padx=(0, 6))
-        self.pad_var = tk.StringVar(value=PAD_OPTIONS[""])
-        ttk.Combobox(options, textvariable=self.pad_var, state="readonly",
+        ttk.Combobox(inner, textvariable=self.pad_var, state="readonly",
                      width=14, values=list(PAD_OPTIONS.values())).grid(row=0, column=3)
-        options.columnconfigure(4, weight=1)
+        inner.columnconfigure(4, weight=1)
 
-        rooms_card = self._section(parent, "Habitaciones y zonas")
-        ttk.Label(rooms_card, text="Ctrl+clic o Shift+clic para seleccionar varias",
+        card = theme.card(parent)
+        card.pack(fill="both", expand=True, pady=(0, 12))
+        inner = ttk.Frame(card, style="Card.TFrame", padding=14)
+        inner.pack(fill="both", expand=True)
+        ttk.Label(inner, text="Ctrl+clic o Shift+clic para seleccionar varias",
                   style="Card.Dim.TLabel").pack(anchor="w", pady=(0, 4))
-        self.rooms_list = theme.listbox(rooms_card)
+        self.rooms_list = theme.listbox(inner)
         self.rooms_list.pack(fill="both", expand=True, pady=(0, 8))
 
         theme.flat_button(parent, "▶  Limpiar habitaciones seleccionadas",
                           self._dispatch_clean_rooms, accent=True).pack(
-            fill="x", ipady=4)
+            fill="x", ipady=5)
 
     def _build_routines(self, parent):
         top = ttk.Frame(parent)
@@ -258,15 +285,20 @@ class RoombaGUI:
         theme.flat_button(top, "↻  Actualizar rutinas",
                           self._dispatch_load_favorites).pack(side="left")
 
-        card = self._section(parent, "Rutinas guardadas en tu cuenta de iRobot")
-        self.favorites_list = theme.listbox(card)
+        card = theme.card(parent)
+        card.pack(fill="both", expand=True, pady=(0, 12))
+        inner = ttk.Frame(card, style="Card.TFrame", padding=14)
+        inner.pack(fill="both", expand=True)
+        ttk.Label(inner, text="Rutinas guardadas en tu cuenta de iRobot",
+                  style="Card.Dim.TLabel").pack(anchor="w", pady=(0, 4))
+        self.favorites_list = theme.listbox(inner)
         self.favorites_list.pack(fill="both", expand=True, pady=(0, 8))
         self.favorites_list.bind("<Double-Button-1>",
                                  lambda _: self._dispatch_start_favorite())
 
         theme.flat_button(parent, "▶  Iniciar rutina seleccionada",
                           self._dispatch_start_favorite, accent=True).pack(
-            fill="x", ipady=4)
+            fill="x", ipady=5)
 
     def _build_schedules(self, parent):
         top = ttk.Frame(parent)
@@ -274,9 +306,12 @@ class RoombaGUI:
         theme.flat_button(top, "↻  Actualizar programaciones",
                           self._dispatch_load_schedules).pack(side="left")
 
-        card = self._section(parent, "Programaciones")
+        card = theme.card(parent)
+        card.pack(fill="both", expand=True)
+        inner = ttk.Frame(card, style="Card.TFrame", padding=14)
+        inner.pack(fill="both", expand=True)
         columns = ("name", "time", "days", "enabled")
-        self.schedules_tree = ttk.Treeview(card, columns=columns,
+        self.schedules_tree = ttk.Treeview(inner, columns=columns,
                                            show="headings", height=10)
         self.schedules_tree.heading("name", text="Nombre")
         self.schedules_tree.heading("time", text="Hora")
@@ -307,6 +342,32 @@ class RoombaGUI:
                 self.root.after(0, lambda: done(result, error))
 
         threading.Thread(target=runner, daemon=True).start()
+
+    def _dispatch_start_cleaning(self):
+        if self.room_var.get() == ALL_ROOMS:
+            self._dispatch_simple("start")
+            return
+        rooms = self._rooms
+        chosen = [r for r in rooms if r["name"] == self.room_var.get()]
+        if not chosen:
+            self._log("⚠ Actualiza las habitaciones para usar limpieza por habitación")
+            return
+        suction_key = next((k for k, v in SUCTION_OPTIONS.items()
+                            if v == self.suction_var.get()), "")
+        pad_key = next((k for k, v in PAD_OPTIONS.items()
+                        if v == self.pad_var.get()), "")
+        suction = suction_key or None
+        pad_wetness = int(pad_key) if pad_key else None
+        names = chosen[0]["name"]
+        self._log(f"→ Limpiar: {names} (succión={suction or 'defecto'}, fregado={pad_wetness or 'defecto'})")
+
+        def done(_, error):
+            if error:
+                self._log(f"✗ Fallo al enviar: {error}")
+            else:
+                self._log(f"✓ Comando enviado: {names}")
+
+        self._async(lambda: self.backend.clean_rooms(chosen, suction, pad_wetness), done)
 
     def _dispatch_simple(self, cmd: str):
         label = BUTTON_LABELS.get(cmd, cmd)
@@ -368,24 +429,26 @@ class RoombaGUI:
         self._log("→ Cargando habitaciones...")
 
         def done(rooms, error):
-            self.rooms_list.delete(0, "end")
             if error:
                 self._log(f"✗ No se pudieron cargar habitaciones: {error}")
                 return
             if not rooms:
                 self._log("⚠ Sin mapa activo: deja que el robot mapee la casa primero")
                 return
+            self._rooms = rooms
+            names = [ALL_ROOMS] + [room["name"] for room in rooms]
+            self.room_combo.configure(values=names)
+            self.rooms_list.delete(0, "end")
             for room in rooms:
                 kind = "habitación" if room["type"] == "RID" else "zona"
                 self.rooms_list.insert("end", f"  {room['name']}  ·  {kind}")
-            self._rooms = rooms
             self._log(f"✓ {len(rooms)} habitación(es)/zona(s) cargadas")
 
         self._async(self.backend.get_rooms, done)
 
     def _dispatch_clean_rooms(self):
         selection = self.rooms_list.curselection()
-        rooms = getattr(self, "_rooms", [])
+        rooms = self._rooms
         if not selection or not rooms:
             self._log("⚠ Selecciona al menos una habitación (actualiza la lista si está vacía)")
             return
@@ -484,30 +547,52 @@ class RoombaGUI:
         self.status_dot.create_oval(1, 1, 10, 10, fill=color, width=0)
         self.online_label.configure(text=text)
 
-    def _draw_battery(self, pct):
-        canvas = self.battery_canvas
-        canvas.delete("all")
-        width = 130
-        height = 10
-        canvas.create_rectangle(0, 0, width, height, outline=theme.BORDER, width=1)
-        if pct:
-            fill = (theme.SUCCESS if pct >= 30
-                    else theme.WARNING if pct >= 15 else theme.DANGER)
-            canvas.create_rectangle(1, 1, 1 + (width - 2) * pct / 100,
-                                    height - 1, fill=fill, width=0)
+    def _update_circles(self, status: dict):
+        battery = status.get("batPct")
+        if battery is None:
+            theme.draw_ring(self._circles["Batería"], 0, theme.TEXT_DIM,
+                            "Batería", "—")
+        else:
+            pct = max(0, min(100, int(battery)))
+            color = (theme.SUCCESS if pct >= 30
+                     else theme.WARNING if pct >= 15 else theme.DANGER)
+            theme.draw_ring(self._circles["Batería"], pct / 100, color,
+                            "Batería", f"{pct}%")
+
+        bin_state = status.get("bin") or {}
+        if not bin_state:
+            theme.draw_ring(self._circles["Depósito"], 0, theme.TEXT_DIM,
+                            "Depósito", "—")
+        elif bin_state.get("full"):
+            theme.draw_ring(self._circles["Depósito"], 1.0, theme.WARNING,
+                            "Depósito", "Lleno")
+        elif bin_state.get("present") is False:
+            theme.draw_ring(self._circles["Depósito"], 0, theme.DANGER,
+                            "Depósito", "Ausente")
+        else:
+            theme.draw_ring(self._circles["Depósito"], 1.0, theme.SUCCESS,
+                            "Depósito", "OK")
+
+        if self._online:
+            theme.draw_ring(self._circles["Conexión"], 1.0, theme.SUCCESS,
+                            "Conexión", "OK")
+        else:
+            theme.draw_ring(self._circles["Conexión"], 0, theme.DANGER,
+                            "Conexión", "Sin")
 
     def _update_status(self, status: dict):
+        self._online = True
         self._set_online(True)
-        battery = status.get("batPct")
-        if battery is not None:
-            self.battery_label.configure(text=f"Batería {battery}%")
-            self._draw_battery(int(battery))
+        self._update_circles(status)
         mission = status.get("cleanMissionStatus") or {}
         phase = mission.get("phase")
-        if phase:
-            self.phase_label.configure(text=PHASE.get(phase, phase),
-                                       bg=theme.phase_color(phase, mission.get("error")),
-                                       fg="#ffffff")
+        error = mission.get("error")
+        if error:
+            self.phase_line.configure(text=f"⚠  {PHASE.get(phase, phase or 'Error')}: "
+                                           f"{error}", fg=theme.DANGER)
+        elif phase:
+            self.phase_line.configure(text=f"✓  {PHASE.get(phase, phase)}",
+                                      fg=theme.phase_color(phase))
         self.status_text.configure(state="normal")
         self.status_text.delete("1.0", "end")
         self.status_text.insert("1.0", render_state(status))

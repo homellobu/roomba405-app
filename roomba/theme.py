@@ -1,24 +1,25 @@
 import tkinter as tk
 from tkinter import ttk
 
-BG = "#f5f6f8"
-SIDEBAR = "#f7f8fa"
-SURFACE = "#ffffff"
-SURFACE_2 = "#e9ebee"
-BORDER = "#e3e5e9"
-TEXT = "#1a1c20"
-TEXT_DIM = "#6b7280"
-ACCENT = "#2f95a8"
-ACCENT_DARK = "#267e8e"
-SUCCESS = "#34a853"
-WARNING = "#e8a13f"
-DANGER = "#e05d5d"
+BG = "#e9e6d3"
+SURFACE = "#f5f3e8"
+SURFACE_2 = "#e2dfcc"
+BORDER = "#d9d5bf"
+CIRCLE = "#e7eedb"
+TEXT = "#20241a"
+TEXT_DIM = "#84886f"
+ACCENT = "#305237"
+ACCENT_DARK = "#264229"
+SUCCESS = "#5a8a5e"
+WARNING = "#c9a13f"
+DANGER = "#c05d50"
 
 FONT = ("Helvetica Neue", 13)
 FONT_SMALL = ("Helvetica Neue", 11)
-FONT_TITLE = ("Helvetica Neue", 18, "bold")
-FONT_PHASE = ("Helvetica Neue", 12, "bold")
+FONT_TITLE = ("Helvetica Neue", 26, "bold")
+FONT_PHASE = ("Helvetica Neue", 13, "bold")
 FONT_MONO = ("Menlo", 11)
+FONT_ICON = ("Helvetica Neue", 17)
 
 
 def apply(root: tk.Tk):
@@ -32,20 +33,11 @@ def apply(root: tk.Tk):
     style.configure(".", background=BG, foreground=TEXT, font=FONT)
     style.configure("TFrame", background=BG)
     style.configure("Card.TFrame", background=SURFACE)
-    style.configure("Sidebar.TFrame", background=SIDEBAR)
     style.configure("TLabel", background=BG, foreground=TEXT, font=FONT)
     style.configure("Card.TLabel", background=SURFACE, foreground=TEXT, font=FONT)
     style.configure("Dim.TLabel", background=BG, foreground=TEXT_DIM, font=FONT_SMALL)
     style.configure("Card.Dim.TLabel", background=SURFACE, foreground=TEXT_DIM, font=FONT_SMALL)
-    style.configure("Sidebar.Dim.TLabel", background=SIDEBAR, foreground=TEXT_DIM, font=FONT_SMALL)
     style.configure("Title.TLabel", background=BG, foreground=TEXT, font=FONT_TITLE)
-
-    style.configure("TNotebook", background=BG, borderwidth=0, tabmargins=(0, 4, 0, 0))
-    style.configure("TNotebook.Tab", background=BG, foreground=TEXT_DIM,
-                    padding=(18, 8), borderwidth=0, font=FONT)
-    style.map("TNotebook.Tab",
-              background=[("selected", SURFACE)],
-              foreground=[("selected", TEXT)])
 
     style.configure("TButton", background=SURFACE_2, foreground=TEXT,
                     borderwidth=0, focusthickness=0, padding=(14, 8), font=FONT)
@@ -58,15 +50,13 @@ def apply(root: tk.Tk):
               background=[("active", ACCENT_DARK), ("pressed", ACCENT_DARK)],
               foreground=[("active", "#ffffff"), ("pressed", "#ffffff")])
 
-    style.configure("Nav.TButton", background=SIDEBAR, foreground=TEXT_DIM,
-                    borderwidth=0, focusthickness=0, padding=(14, 9),
-                    font=FONT, anchor="w")
+    style.configure("Nav.TButton", background=BG, foreground=TEXT_DIM,
+                    borderwidth=0, focusthickness=0, padding=(12, 6), font=FONT_SMALL)
     style.map("Nav.TButton",
               background=[("active", SURFACE), ("pressed", SURFACE)],
               foreground=[("active", TEXT), ("pressed", TEXT)])
     style.configure("NavActive.TButton", background=SURFACE, foreground=ACCENT,
-                    borderwidth=0, focusthickness=0, padding=(14, 9),
-                    font=FONT_PHASE, anchor="w")
+                    borderwidth=0, focusthickness=0, padding=(12, 6), font=FONT_PHASE)
     style.map("NavActive.TButton",
               background=[("active", SURFACE), ("pressed", SURFACE)],
               foreground=[("active", ACCENT), ("pressed", ACCENT)])
@@ -105,16 +95,50 @@ def nav_button(parent, text, command, active=False):
                       style="NavActive.TButton" if active else "Nav.TButton")
 
 
-def battery_bar(parent, value=None, width=140, height=10):
-    pct = 0 if value is None else max(0, min(100, int(value)))
-    canvas = tk.Canvas(parent, width=width, height=height, bg=SURFACE,
-                       highlightthickness=0, bd=0)
-    canvas.create_rectangle(0, 0, width, height, outline=BORDER, width=1)
-    if pct:
-        fill = SUCCESS if pct >= 30 else WARNING if pct >= 15 else DANGER
-        canvas.create_rectangle(1, 1, 1 + (width - 2) * pct / 100, height - 1,
-                                fill=fill, width=0)
+def circle_button(parent, icon, command, size=54, bg=None):
+    canvas = tk.Canvas(parent, width=size, height=size,
+                       bg=bg or SURFACE, highlightthickness=0, bd=0,
+                       cursor="hand2")
+    pad = 3
+    canvas.create_oval(pad, pad, size - pad, size - pad,
+                       fill=SURFACE, outline=BORDER, width=1, tags="btn")
+    canvas.create_text(size / 2, size / 2, text=icon, font=FONT_ICON,
+                       fill=TEXT, tags="btn")
+
+    def press(_):
+        command()
+
+    def enter(_):
+        canvas.itemconfigure("btn", outline=ACCENT)
+
+    def leave(_):
+        canvas.itemconfigure("btn", outline=BORDER)
+
+    canvas.tag_bind("btn", "<Button-1>", press)
+    canvas.tag_bind("btn", "<Enter>", enter)
+    canvas.tag_bind("btn", "<Leave>", leave)
     return canvas
+
+
+def ring(parent, size=76, bg=None):
+    canvas = tk.Canvas(parent, width=size, height=size + 4,
+                       bg=bg or BG, highlightthickness=0, bd=0)
+    return canvas
+
+
+def draw_ring(canvas, fraction, color, label, value, size=76):
+    canvas.delete("all")
+    pad = 6
+    canvas.create_arc(pad, pad, size - pad, size - pad, start=90,
+                      extent=359.9, style="arc", outline=BORDER, width=5)
+    if fraction > 0:
+        canvas.create_arc(pad, pad, size - pad, size - pad, start=90,
+                          extent=-360 * max(0.0, min(1.0, fraction)),
+                          style="arc", outline=color, width=5)
+    canvas.create_text(size / 2, size / 2 - 2, text=value,
+                       font=("Helvetica Neue", 14, "bold"), fill=TEXT)
+    canvas.create_text(size / 2, size + 6, text=label,
+                       font=FONT_SMALL, fill=TEXT_DIM)
 
 
 def listbox(parent, **kwargs):
