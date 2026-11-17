@@ -6,15 +6,17 @@
 <title>Roomba</title>
 <style>
   :root {
-    --bg: #e9e6d3;
-    --card: #f7f5ec;
-    --soft: #ece9d8;
-    --border: #ddd9c3;
-    --text: #20241a;
-    --dim: #8a8d76;
-    --green: #305237;
-    --green-dark: #264229;
-    --ok: #5a8a5e;
+    --bg: #eef0e2;
+    --green-soft: #e3ead2;
+    --card: #ffffff;
+    --soft: #f0efe6;
+    --border: #e4e2d4;
+    --text: #1e221a;
+    --dim: #9a9d8c;
+    --green: #2e5233;
+    --green-dark: #24422a;
+    --ring: #dce8d2;
+    --ok: #6fa06f;
     --warn: #c9a13f;
     --bad: #c05d50;
   }
@@ -24,60 +26,66 @@
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
+    display: flex; flex-direction: column;
   }
-  header {
-    display: flex; align-items: center; gap: 16px;
-    padding: 18px 34px 6px;
+  .topbar {
+    background: var(--card);
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 28px;
+    box-shadow: 0 1px 0 var(--border);
   }
-  header .brand { font-size: 18px; font-weight: 700; }
-  nav { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .brand { font-size: 16px; font-weight: 700; }
+  nav { margin-left: auto; display: flex; gap: 4px; align-items: center; }
   nav button {
     border: none; background: transparent; color: var(--dim);
-    font-size: 13px; padding: 8px 14px; border-radius: 999px; cursor: pointer;
+    font-size: 13px; padding: 7px 14px; border-radius: 999px; cursor: pointer;
     font-family: inherit;
   }
-  nav button:hover { background: var(--card); color: var(--text); }
-  nav button.active { background: var(--card); color: var(--green); font-weight: 600; }
-  .conn { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--dim); margin-left: 10px; }
-  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--dim); }
+  nav button:hover { background: var(--soft); color: var(--text); }
+  nav button.active { background: var(--ring); color: var(--green); font-weight: 600; }
+  .conn { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--dim); margin-left: 12px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--dim); }
   .dot.ok { background: var(--ok); }
   .dot.bad { background: var(--bad); }
-  main {
-    display: flex; gap: 34px; align-items: flex-start;
-    max-width: 1080px; margin: 0 auto; padding: 18px 34px 40px;
-  }
-  .scene { flex: 1; min-width: 0; padding-top: 8px; }
-  .scene h1 { font-size: 34px; font-weight: 700; letter-spacing: -0.5px; }
-  .statusline { margin-top: 8px; font-size: 16px; font-weight: 600; color: var(--dim); }
-  .statusline.ok { color: var(--ok); }
+  main { flex: 1; display: flex; gap: 30px; align-items: stretch; padding: 26px 30px 30px; max-width: 1150px; width: 100%; margin: 0 auto; }
+  .scene { flex: 1; min-width: 0; }
+  .scene h1 { font-size: 36px; font-weight: 700; letter-spacing: -0.5px; }
+  .statusline { margin-top: 10px; font-size: 16px; font-weight: 600; color: var(--dim); }
+  .statusline.ok { color: var(--green); }
   .statusline.warn { color: var(--warn); }
   .statusline.bad { color: var(--bad); }
-  .robot-img { display: block; width: 175px; margin: 22px 0 26px; }
+  .robot-img { display: block; width: 190px; margin: 26px 0 24px; filter: drop-shadow(0 14px 18px rgba(40, 50, 30, 0.18)); }
+  .maint-card {
+    background: var(--card); border-radius: 22px; padding: 20px 24px;
+    box-shadow: 0 10px 30px rgba(50, 60, 35, 0.08);
+    max-width: 430px;
+  }
   .section-label {
     font-size: 11px; letter-spacing: 1.4px; color: var(--dim);
     font-weight: 600; margin-bottom: 14px;
   }
-  .rings { display: flex; gap: 26px; }
+  .rings { display: flex; gap: 30px; }
   .ring { text-align: center; }
   .ring svg { display: block; }
-  .ring .val { font-size: 15px; font-weight: 700; }
-  .ring .lbl { font-size: 12px; color: var(--dim); margin-top: 2px; }
+  .ring .lbl { font-size: 12px; color: var(--dim); margin-top: 4px; }
   .details {
-    margin-top: 26px; background: var(--card); border-radius: 18px;
-    padding: 16px 18px; font-family: Menlo, monospace; font-size: 12px;
+    margin-top: 20px; background: var(--card); border-radius: 16px;
+    padding: 14px 18px; font-family: Menlo, monospace; font-size: 12px;
     line-height: 1.7; white-space: pre-wrap; color: var(--text);
-    box-shadow: 0 6px 18px rgba(60, 60, 30, 0.06);
+    box-shadow: 0 6px 18px rgba(50, 60, 35, 0.06);
+    max-width: 430px;
   }
   .panel {
-    width: 380px; flex-shrink: 0; background: var(--card);
-    border-radius: 28px; padding: 26px 24px;
-    box-shadow: 0 14px 40px rgba(60, 60, 30, 0.10);
+    width: 370px; flex-shrink: 0; background: var(--card);
+    border-radius: 30px; padding: 28px 26px;
+    box-shadow: 0 18px 50px rgba(50, 60, 35, 0.12);
+    align-self: flex-start;
   }
-  .select, select {
+  select {
     width: 100%; appearance: none; -webkit-appearance: none;
-    background: #fff; border: 1px solid var(--border); border-radius: 14px;
+    background: #fff; border: 1.5px solid var(--border); border-radius: 14px;
     padding: 12px 14px; font-size: 14px; color: var(--text); font-family: inherit;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1l5 5 5-5' stroke='%238a8d76' stroke-width='2' fill='none' stroke-linecap='round'/></svg>");
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1l5 5 5-5' stroke='%239a9d8c' stroke-width='2' fill='none' stroke-linecap='round'/></svg>");
     background-repeat: no-repeat; background-position: right 14px center;
     cursor: pointer;
   }
@@ -85,32 +93,35 @@
   .opts .field { flex: 1; }
   .opts label { display: block; font-size: 11px; color: var(--dim); margin: 0 0 5px 4px; }
   .btn-primary {
-    width: 100%; margin-top: 18px; border: none; cursor: pointer;
+    width: 100%; margin-top: 20px; border: none; cursor: pointer;
     background: var(--green); color: #fff; font-size: 15px; font-weight: 600;
     padding: 15px 0; border-radius: 999px; font-family: inherit;
-    transition: background .15s;
+    box-shadow: 0 8px 20px rgba(46, 82, 51, 0.28);
+    transition: background .15s, transform .1s;
   }
   .btn-primary:hover { background: var(--green-dark); }
+  .btn-primary:active { transform: scale(0.98); }
   .btn-pill {
     border: none; cursor: pointer; background: var(--soft); color: var(--text);
     font-size: 13px; padding: 9px 16px; border-radius: 999px; font-family: inherit;
     transition: background .15s;
   }
-  .btn-pill:hover { background: var(--border); }
-  .rounds { display: flex; gap: 14px; justify-content: center; margin-top: 20px; }
+  .btn-pill:hover { background: var(--ring); }
+  .rounds { display: flex; gap: 16px; justify-content: center; margin-top: 22px; }
   .round {
-    width: 56px; height: 56px; border-radius: 50%; border: none; cursor: pointer;
-    background: #fff; font-size: 20px; color: var(--text);
-    box-shadow: 0 4px 14px rgba(60, 60, 30, 0.10);
+    width: 58px; height: 58px; border-radius: 50%; border: none; cursor: pointer;
+    background: #fff; font-size: 21px; color: var(--text);
+    box-shadow: 0 5px 16px rgba(50, 60, 35, 0.14);
     display: flex; align-items: center; justify-content: center;
     transition: transform .1s, box-shadow .15s;
   }
-  .round:hover { box-shadow: 0 6px 18px rgba(60, 60, 30, 0.18); }
-  .round:active { transform: scale(0.94); }
+  .round.small { width: 46px; height: 46px; font-size: 16px; }
+  .round:hover { box-shadow: 0 8px 22px rgba(50, 60, 35, 0.22); }
+  .round:active { transform: scale(0.93); }
   .maint { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 14px; }
   .maint .btn-pill { text-align: center; }
   .log {
-    margin-top: 14px; max-height: 150px; overflow-y: auto;
+    margin-top: 12px; max-height: 140px; overflow-y: auto;
     font-family: Menlo, monospace; font-size: 11.5px; line-height: 1.8;
     color: var(--text);
   }
@@ -119,7 +130,7 @@
   .view.active { display: block; }
   .page-card {
     background: var(--card); border-radius: 24px; padding: 22px;
-    box-shadow: 0 10px 30px rgba(60, 60, 30, 0.08); margin-top: 14px;
+    box-shadow: 0 10px 30px rgba(50, 60, 35, 0.08); margin-top: 14px;
   }
   .list { list-style: none; }
   .list li {
@@ -132,13 +143,15 @@
   th { text-align: left; font-size: 11px; letter-spacing: 1px; color: var(--dim); padding: 8px; }
   td { padding: 10px 8px; border-top: 1px solid var(--border); }
   .actions { display: flex; gap: 10px; margin-top: 16px; }
+  .actions .btn-primary { width: auto; padding: 13px 28px; margin-top: 0; }
   .empty { color: var(--dim); font-size: 13px; padding: 12px 4px; }
-  h2 { font-size: 22px; font-weight: 700; }
+  h2 { font-size: 24px; font-weight: 700; }
+  .version { text-align: right; font-size: 10px; color: var(--dim); padding: 0 14px 8px; }
 </style>
 </head>
 <body>
-<header>
-  <span class="brand">Roomba</span>
+<div class="topbar">
+  <span class="brand">Hogar en Armonía</span>
   <nav id="nav">
     <button data-view="control" class="active">Control</button>
     <button data-view="habitaciones">Habitaciones</button>
@@ -146,19 +159,21 @@
     <button data-view="programaciones">Programaciones</button>
   </nav>
   <span class="conn"><span class="dot" id="conn-dot"></span><span id="conn-text">Conectando…</span></span>
-</header>
+</div>
 
 <main>
-  <section class="view active" id="view-control" style="display:flex; gap:34px; align-items:flex-start;">
+  <section class="view active" id="view-control" style="display:flex; gap:30px; align-items:flex-start;">
     <div class="scene">
       <h1>Tu casa, en calma</h1>
       <div class="statusline" id="statusline">Esperando estado del robot…</div>
-      <img class="robot-img" src="/icon.png" alt="Roomba">
-      <div class="section-label">ESTADO DE MANTENIMIENTO</div>
-      <div class="rings">
-        <div class="ring" id="ring-bat-box"></div>
-        <div class="ring" id="ring-bin-box"></div>
-        <div class="ring" id="ring-conn-box"></div>
+      <img class="robot-img" src="/icon.png?v=3" alt="Roomba">
+      <div class="maint-card">
+        <div class="section-label">ESTADO DE MANTENIMIENTO</div>
+        <div class="rings">
+          <div class="ring" id="ring-bat-box"></div>
+          <div class="ring" id="ring-bin-box"></div>
+          <div class="ring" id="ring-conn-box"></div>
+        </div>
       </div>
       <div class="details" id="details">Aún no hay estado del robot.</div>
     </div>
@@ -190,19 +205,19 @@
       <button class="btn-primary" id="btn-start">▶&nbsp; Empezar limpieza</button>
       <div class="rounds">
         <button class="round" id="btn-pause" title="Pausar">⏸</button>
-        <button class="round" id="btn-resume" title="Reanudar">⏵</button>
-        <button class="round" id="btn-stop" title="Detener">⏹</button>
         <button class="round" id="btn-dock" title="Volver a la base (con reintentos)">🏠</button>
         <button class="round" id="btn-find" title="Localizar">📍</button>
+        <button class="round small" id="btn-resume" title="Reanudar">⏵</button>
+        <button class="round small" id="btn-stop" title="Detener">⏹</button>
       </div>
-      <div class="section-label" style="margin-top:22px;">MANTENIMIENTO</div>
+      <div class="section-label" style="margin-top:24px;">MANTENIMIENTO</div>
       <div class="maint">
         <button class="btn-pill" data-cmd="evac">🗑 Vaciar depósito</button>
         <button class="btn-pill" data-cmd="washpad">💧 Lavar pad</button>
         <button class="btn-pill" data-cmd="drypad">🌡 Secar pad</button>
         <button class="btn-pill" data-cmd="flrefill">💦 Rellenar agua</button>
       </div>
-      <div class="section-label" style="margin-top:22px;">REGISTRO DE ACTIVIDAD</div>
+      <div class="section-label" style="margin-top:24px;">REGISTRO DE ACTIVIDAD</div>
       <div class="log" id="log"></div>
     </div>
   </section>
@@ -216,7 +231,7 @@
       <ul class="list" id="rooms-list"><li class="empty">Pulsa "Actualizar habitaciones" para cargar el mapa.</li></ul>
     </div>
     <div class="actions">
-      <button class="btn-primary" style="width:auto; padding:13px 26px;" id="btn-clean-rooms">▶&nbsp; Limpiar selección</button>
+      <button class="btn-primary" id="btn-clean-rooms">▶&nbsp; Limpiar selección</button>
     </div>
   </section>
 
@@ -229,7 +244,7 @@
       <ul class="list" id="favs-list"><li class="empty">Pulsa "Actualizar rutinas".</li></ul>
     </div>
     <div class="actions">
-      <button class="btn-primary" style="width:auto; padding:13px 26px;" id="btn-start-fav">▶&nbsp; Iniciar seleccionada</button>
+      <button class="btn-primary" id="btn-start-fav">▶&nbsp; Iniciar seleccionada</button>
     </div>
   </section>
 
@@ -246,10 +261,11 @@
     </div>
   </section>
 </main>
+<div class="version">interfaz web v3</div>
 
 <script>
 const $ = (id) => document.getElementById(id);
-const C = 2 * Math.PI * 36;
+const C = 2 * Math.PI * 34;
 const PHASES = {
   "charge": "Cargando", "run": "Limpiando", "stop": "En reposo", "pause": "En pausa",
   "hmUsrDock": "Volviendo a la base", "hmMidMsn": "Volviendo (media misión)",
@@ -262,7 +278,6 @@ const CYCLES = {
 };
 let rooms = [];
 let favorites = [];
-let online = null;
 
 function log(msg) {
   const t = new Date().toTimeString().slice(0, 5);
@@ -279,25 +294,25 @@ async function api(path, body) {
   return data;
 }
 
-function ring(el, frac, color, value, label) {
+function ring(el, frac, color, icon, value, label) {
   const off = C * (1 - Math.max(0, Math.min(1, frac)));
   el.innerHTML = `
-    <svg width="84" height="84">
-      <circle cx="42" cy="42" r="36" stroke="var(--border)" stroke-width="6" fill="none"/>
-      <circle cx="42" cy="42" r="36" stroke="${color}" stroke-width="6" fill="none"
+    <svg width="92" height="92">
+      <circle cx="46" cy="46" r="34" stroke="var(--ring)" stroke-width="7" fill="#fff"/>
+      <circle cx="46" cy="46" r="34" stroke="${color}" stroke-width="7" fill="none"
         stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${off}"
-        transform="rotate(-90 42 42)"/>
-      <text x="42" y="47" text-anchor="middle" font-size="14" font-weight="700"
+        transform="rotate(-90 46 46)"/>
+      <text x="46" y="42" text-anchor="middle" font-size="15">${icon}</text>
+      <text x="46" y="62" text-anchor="middle" font-size="13" font-weight="700"
         fill="var(--text)" font-family="inherit">${value}</text>
     </svg>
     <div class="lbl">${label}</div>`;
 }
 
 function setConn(ok) {
-  online = ok;
   $("conn-dot").className = "dot " + (ok ? "ok" : "bad");
   $("conn-text").textContent = ok ? "En línea" : "Sin conexión";
-  ring($("ring-conn-box"), ok ? 1 : 0, ok ? "var(--ok)" : "var(--bad)", ok ? "OK" : "Sin", "Conexión");
+  ring($("ring-conn-box"), ok ? 1 : 0, ok ? "var(--ok)" : "var(--bad)", "📶", ok ? "OK" : "Sin", "Conexión");
 }
 
 function updateStatus(st) {
@@ -310,21 +325,21 @@ function updateStatus(st) {
     line.classList.add("bad");
   } else if (m.phase) {
     line.textContent = "✓ " + (PHASES[m.phase] || m.phase);
-    line.classList.add(m.phase === "run" ? "ok" : m.phase === "charge" ? "ok" : "warn");
+    line.classList.add(m.phase === "run" || m.phase === "charge" ? "ok" : "warn");
   }
   const bat = st.batPct;
   if (bat !== undefined && bat !== null) {
     const pct = Math.max(0, Math.min(100, bat));
     const color = pct >= 30 ? "var(--ok)" : pct >= 15 ? "var(--warn)" : "var(--bad)";
-    ring($("ring-bat-box"), pct / 100, color, pct + "%", "Batería");
+    ring($("ring-bat-box"), pct / 100, color, "🔋", pct + "%", "Batería");
   } else {
-    ring($("ring-bat-box"), 0, "var(--dim)", "—", "Batería");
+    ring($("ring-bat-box"), 0, "var(--dim)", "🔋", "—", "Batería");
   }
   const bin = st.bin || null;
-  if (!bin) ring($("ring-bin-box"), 0, "var(--dim)", "—", "Depósito");
-  else if (bin.full) ring($("ring-bin-box"), 1, "var(--warn)", "Lleno", "Depósito");
-  else if (bin.present === false) ring($("ring-bin-box"), 0, "var(--bad)", "Ausente", "Depósito");
-  else ring($("ring-bin-box"), 1, "var(--ok)", "OK", "Depósito");
+  if (!bin) ring($("ring-bin-box"), 0, "var(--dim)", "🗑", "—", "Depósito");
+  else if (bin.full) ring($("ring-bin-box"), 1, "var(--warn)", "🗑", "Lleno", "Depósito");
+  else if (bin.present === false) ring($("ring-bin-box"), 0, "var(--bad)", "🗑", "Ausente", "Depósito");
+  else ring($("ring-bin-box"), 1, "var(--ok)", "🗑", "OK", "Depósito");
 
   const lines = [];
   if (st.name) lines.push("Nombre     " + st.name);
@@ -481,9 +496,9 @@ $("btn-load-scheds").addEventListener("click", async () => {
   } catch (e) { log("✗ No se pudieron cargar programaciones: " + e.message); }
 });
 
-ring($("ring-bat-box"), 0, "var(--dim)", "—", "Batería");
-ring($("ring-bin-box"), 0, "var(--dim)", "—", "Depósito");
-ring($("ring-conn-box"), 0, "var(--dim)", "—", "Conexión");
+ring($("ring-bat-box"), 0, "var(--dim)", "🔋", "—", "Batería");
+ring($("ring-bin-box"), 0, "var(--dim)", "🗑", "—", "Depósito");
+ring($("ring-conn-box"), 0, "var(--dim)", "📶", "—", "Conexión");
 refresh();
 setInterval(refresh, 8000);
 </script>
