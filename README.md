@@ -117,6 +117,10 @@ Comprobaciones habituales:
    si suena, prueba `start` de nuevo.
 5. **Varios robots en la cuenta**: usa `--blid` con el identificador que
    muestra `roomba --debug --status`.
+6. **Comandos publicados sin efecto** (y en el log aparece "usando el prefijo
+   corregido"): iRobot migra robots entre despliegues y el prefijo del topic
+   de comandos cambia. La app lo detecta leyendo `svcEndpoints.svcDeplId` del
+   estado del robot y reescribe el prefijo automáticamente.
 
 ## Limitaciones conocidas
 

@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import threading
 import time
 
@@ -61,6 +62,7 @@ class Roomba:
         info = robots[chosen]
         self.blid = chosen
         self.name = info.get("name", chosen)
+        self.robot_depl_id = self._deployment_from_robot_info(info)
 
         for key in ("iot_token", "iot_signature", "iot_authorizer_name", "iot_clientid"):
             if not session.get(key):
@@ -73,6 +75,32 @@ class Roomba:
         disco = session.get("_discovery", {})
         self.endpoint = disco["mqtt"]
         self.irbt_topics = disco["irbt_topics"]
+
+    @staticmethod
+    def _deployment_from_robot_info(info: dict) -> str | None:
+        for key in ("svc_deployment_id", "svcDeplId", "svc_depl_id"):
+            if info.get(key):
+                return info[key]
+        endpoints = info.get("svcEndpoints") or {}
+        if endpoints.get("svcDeplId"):
+            return endpoints["svcDeplId"]
+        return None
+
+    def _align_topic_prefix(self):
+        state = self.snapshot()
+        endpoints = state.get("svcEndpoints") or {}
+        depl = endpoints.get("svcDeplId") or self.robot_depl_id
+        if not depl or not self.irbt_topics:
+            return
+        if self.irbt_topics.startswith(depl):
+            return
+        old_prefix = self.irbt_topics
+        self.irbt_topics = re.sub(r"^v\d+", depl, old_prefix)
+        log.warning(
+            "El robot está en el despliegue '%s' pero el descubrimiento devolvió '%s'; "
+            "usando el prefijo corregido %s (sin esto, los comandos se publican donde el robot no escucha)",
+            depl, old_prefix, self.irbt_topics,
+        )
 
     @staticmethod
     def _pick_robot(robots: dict) -> str:
@@ -132,6 +160,7 @@ class Roomba:
         log.info("Suscrito a los topics de estado")
         self.refresh_state()
         log.info("Estado inicial recibido")
+        self._align_topic_prefix()
         self._start_refresh_loop()
 
     def _start_refresh_loop(self):
@@ -165,6 +194,7 @@ class Roomba:
             self.conn = self._build_connection()
             self.conn.connect().result(timeout=15)
             self._subscribe()
+            self._align_topic_prefix()
 
     def _on_message(self, topic, payload, **_):
         try:

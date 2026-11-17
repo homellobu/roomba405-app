@@ -18,3 +18,4 @@ tests/test_dock_retry.py
 tests/test_gui.py
 tests/test_state.py
 tests/test_store.py
+tests/test_topic_prefix.py
