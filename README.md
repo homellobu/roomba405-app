@@ -93,6 +93,31 @@ pytest
 Los tests no necesitan un robot real: cubren el renderizado de estado, el
 almacén de credenciales y la cadena de login con respuestas simuladas.
 
+## Diagnóstico de problemas
+
+Si el robot no responde o algo falla, ejecuta con `--debug` para ver en qué
+paso se detiene:
+
+```bash
+roomba --debug --status
+```
+
+Comprobaciones habituales:
+
+1. **¿El robot aparece como conectado en la app oficial de iRobot?** Si la app
+   oficial tampoco lo ve, el robot está sin Wi-Fi o apagado: ponlo en la base
+   y comprueba que la luz de Wi-Fi está fija.
+2. **Login fallido (Gigya)**: email o contraseña incorrectos. Prueba a
+   iniciar sesión en la app oficial. Para cambiar las credenciales guardadas:
+   `roomba --logout` y vuelve a ejecutar.
+3. **Login fallido en `/v2/login`**: el servidor de iRobot rechaza el acceso.
+   Verifica que el robot está vinculado a ESA cuenta (no a otra).
+4. **Se conecta pero no responde a los comandos**: el robot puede estar
+   dormido en la base. Envía `find` (pitido) para comprobar si recibe algo;
+   si suena, prueba `start` de nuevo.
+5. **Varios robots en la cuenta**: usa `--blid` con el identificador que
+   muestra `roomba --debug --status`.
+
 ## Limitaciones conocidas
 
 - Limpieza por habitaciones/mapa: no implementado (el protocolo V4 para mapas

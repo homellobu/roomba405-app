@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 import sys
 from getpass import getpass
@@ -119,7 +120,12 @@ def main():
     parser.add_argument("--watch", action="store_true",
                         help="Tras un comando, muestra el estado del robot")
     parser.add_argument("--logout", action="store_true", help="Borra credenciales guardadas")
+    parser.add_argument("--debug", action="store_true",
+                        help="Muestra el detalle de cada paso (diagnóstico de problemas)")
     args = parser.parse_args()
+
+    if args.debug:
+        logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(name)s: %(message)s")
 
     store = Store()
     if args.logout:

@@ -1,4 +1,5 @@
 import json
+import logging
 import threading
 import time
 
@@ -7,6 +8,8 @@ from awsiot import mqtt_connection_builder
 
 from .cloud import IRobotCloud
 from .store import Store
+
+log = logging.getLogger(__name__)
 
 TOKEN_HEADER = "x-irobot-auth"
 REFRESH_EVERY = 240
@@ -121,10 +124,14 @@ class Roomba:
         )[0].result(timeout=10)
 
     def connect(self):
+        log.info("Conectando MQTT a %s con BLID %s...", self.endpoint, self.blid)
         self.conn = self._build_connection()
         self.conn.connect().result(timeout=15)
+        log.info("MQTT conectado")
         self._subscribe()
+        log.info("Suscrito a los topics de estado")
         self.refresh_state()
+        log.info("Estado inicial recibido")
         self._start_refresh_loop()
 
     def _start_refresh_loop(self):
@@ -202,6 +209,7 @@ class Roomba:
     def send(self, command: str):
         if command not in COMMANDS:
             raise ValueError(f"Comando desconocido: {command}")
+        log.info("Enviando comando '%s' a %s...", command, self._cmd_topic())
         payload = json.dumps({
             "command": command,
             "time": int(time.time()),
@@ -213,6 +221,7 @@ class Roomba:
                 payload=payload,
                 qos=mqtt.QoS.AT_LEAST_ONCE,
             )[0].result(timeout=5)
+        log.info("Comando '%s' publicado", command)
 
     def snapshot(self) -> dict:
         with self._lock:
