@@ -12,17 +12,19 @@ BUTTON_LABELS = {
     "start": "▶  Limpiar toda la casa",
     "pause": "⏸  Pausar",
     "stop": "⏹  Detener",
-    "resume": "⏵  Reanudar",
+    "resume": "▶  Reanudar",
     "dock": "🏠  Volver a la base",
-    "find": "🔔  Localizar",
+    "find": "📍  Localizar",
     "evac": "🗑  Vaciar depósito",
 }
 
+CONTROL_ROW = ["pause", "resume", "stop", "dock", "find"]
+
 DOCK_COMMANDS = {
-    "Vaciar depósito (evac)": "evac",
-    "Lavar pad (AutoWash)": "washpad",
-    "Secar pad (AutoWash)": "drypad",
-    "Rellenar agua": "flrefill",
+    "🗑  Vaciar depósito": "evac",
+    "💧  Lavar pad (AutoWash)": "washpad",
+    "🌡  Secar pad (AutoWash)": "drypad",
+    "💦  Rellenar agua": "flrefill",
 }
 
 SUCTION_OPTIONS = {"": "Por defecto", "low": "Baja", "medium": "Media",
@@ -34,6 +36,15 @@ PAD_OPTIONS = {"": "Por defecto", "1": "Húmedo bajo", "2": "Húmedo medio",
 REFRESH_SECS = 10
 
 ICON_PATH = Path(__file__).resolve().parent.parent / "assets" / "icon.png"
+
+NAV_ITEMS = ["Control", "Habitaciones", "Rutinas", "Programaciones"]
+
+NAV_ICONS = {
+    "Control": "⌂",
+    "Habitaciones": "▦",
+    "Rutinas": "◷",
+    "Programaciones": "▤",
+}
 
 
 def pick_robot_dialog(robots: dict) -> str:
@@ -58,7 +69,8 @@ def pick_robot_dialog(robots: dict) -> str:
             result["blid"] = list(robots)[selection[0]]
         root.destroy()
 
-    theme.flat_button(root, "Seleccionar", confirm, accent=True).pack(pady=(6, 16), fill="x", padx=20)
+    theme.flat_button(root, "Seleccionar", confirm, accent=True).pack(
+        pady=(6, 16), fill="x", padx=20)
     listbox.bind("<Double-Button-1>", confirm)
     root.bind("<Return>", confirm)
     root.mainloop()
@@ -74,10 +86,12 @@ class RoombaGUI:
         self.robot_name = robot_name
         self.root = tk.Tk()
         self.root.title(f"Roomba — {robot_name}")
-        self.root.geometry("660x760")
+        self.root.geometry("920x700")
         theme.apply(self.root)
         self._set_icon()
+        self._online = None
         self._build()
+        self._show("Control")
         self._schedule_refresh()
 
     def _set_icon(self):
@@ -88,119 +102,182 @@ class RoombaGUI:
             pass
 
     def _build(self):
-        main = ttk.Frame(self.root, padding=14)
-        main.pack(fill="both", expand=True)
+        self._build_sidebar()
+
+        main = ttk.Frame(self.root, padding=(18, 14))
+        main.pack(side="left", fill="both", expand=True)
 
         header = ttk.Frame(main)
-        header.pack(fill="x", pady=(0, 10))
+        header.pack(fill="x", pady=(0, 12))
         ttk.Label(header, text=f"Roomba — {self.robot_name}",
                   style="Title.TLabel").pack(side="left")
+
         self.phase_label = tk.Label(header, text=" — ", bg=theme.SURFACE_2,
                                     fg=theme.TEXT_DIM, font=theme.FONT_PHASE,
                                     padx=14, pady=5, bd=0)
-        self.phase_label.pack(side="right")
+        self.phase_label.pack(side="right", padx=(10, 0))
 
-        notebook = ttk.Notebook(main)
-        notebook.pack(fill="both", expand=True)
+        battery_box = ttk.Frame(header)
+        battery_box.pack(side="right", padx=(10, 0))
+        self.battery_label = ttk.Label(battery_box, text="Batería —",
+                                       style="Dim.TLabel")
+        self.battery_label.pack(side="left", padx=(0, 8))
+        self.battery_canvas = tk.Canvas(battery_box, width=130, height=10,
+                                        bg=theme.BG, highlightthickness=0, bd=0)
+        self.battery_canvas.pack(side="left")
 
-        control = ttk.Frame(notebook, padding=14, style="Card.TFrame")
-        notebook.add(control, text="Control")
-        self._build_control(control)
+        status_box = ttk.Frame(header)
+        status_box.pack(side="right", padx=(10, 14))
+        self.status_dot = tk.Canvas(status_box, width=11, height=11,
+                                    bg=theme.BG, highlightthickness=0, bd=0)
+        self.status_dot.pack(side="left", padx=(0, 6))
+        self.status_dot.create_oval(1, 1, 10, 10, fill=theme.TEXT_DIM, width=0)
+        self.online_label = ttk.Label(status_box, text="Conectando…",
+                                      style="Dim.TLabel")
+        self.online_label.pack(side="left")
 
-        rooms = ttk.Frame(notebook, padding=14, style="Card.TFrame")
-        notebook.add(rooms, text="Habitaciones")
-        self._build_rooms(rooms)
+        container = ttk.Frame(main)
+        container.pack(fill="both", expand=True)
+        container.columnconfigure(0, weight=1)
+        container.rowconfigure(0, weight=1)
 
-        routines = ttk.Frame(notebook, padding=14, style="Card.TFrame")
-        notebook.add(routines, text="Rutinas")
-        self._build_routines(routines)
+        pages = {
+            "Control": self._build_control,
+            "Habitaciones": self._build_rooms,
+            "Rutinas": self._build_routines,
+            "Programaciones": self._build_schedules,
+        }
+        self._pages = {}
+        self._nav_buttons = {}
+        for name in NAV_ITEMS:
+            page = ttk.Frame(container)
+            page.grid(row=0, column=0, sticky="nsew")
+            pages[name](page)
+            self._pages[name] = page
 
-        schedules = ttk.Frame(notebook, padding=14, style="Card.TFrame")
-        notebook.add(schedules, text="Programaciones")
-        self._build_schedules(schedules)
+    def _build_sidebar(self):
+        sidebar = ttk.Frame(self.root, style="Sidebar.TFrame", width=180)
+        sidebar.pack(side="left", fill="y")
+        sidebar.pack_propagate(False)
 
-        ttk.Label(main, text="Registro", style="Dim.TLabel").pack(anchor="w", pady=(10, 2))
-        self.log_text = scrolledtext.ScrolledText(
-            main, height=7, state="disabled", bg=theme.SURFACE, fg=theme.TEXT,
-            highlightthickness=1, highlightbackground=theme.BORDER, bd=0,
-            font=theme.FONT_MONO, padx=10, pady=8)
-        self.log_text.pack(fill="both", expand=True)
+        tk.Label(sidebar, text="  Roomba", bg=theme.SIDEBAR, fg=theme.TEXT,
+                 font=theme.FONT_TITLE, anchor="w", pady=14).pack(fill="x")
+
+        for name in NAV_ITEMS:
+            label = f"{NAV_ICONS[name]}  {name}"
+            btn = theme.nav_button(sidebar, label,
+                                   lambda n=name: self._show(n))
+            btn.pack(fill="x", padx=10, pady=2)
+            self._nav_buttons[name] = btn
+
+        ttk.Label(sidebar, text=self.robot_name,
+                  style="Sidebar.Dim.TLabel").pack(side="bottom", pady=12)
+
+    def _show(self, name):
+        for nav_name, btn in self._nav_buttons.items():
+            btn.configure(style="NavActive.TButton" if nav_name == name
+                          else "Nav.TButton")
+        self._pages[name].tkraise()
+
+    def _section(self, parent, title=None):
+        card = theme.card(parent)
+        card.pack(fill="x", pady=(0, 12))
+        inner = ttk.Frame(card, style="Card.TFrame", padding=14)
+        inner.pack(fill="both", expand=True)
+        if title:
+            ttk.Label(inner, text=title, style="Card.Dim.TLabel").pack(
+                anchor="w", pady=(0, 8))
+        return inner
 
     def _build_control(self, parent):
-        self.status_text = theme.text_widget(parent, height=12)
-        self.status_text.pack(fill="x", pady=(0, 12))
+        status_inner = self._section(parent)
+        self.status_text = theme.text_widget(status_inner, height=9)
+        self.status_text.pack(fill="x")
 
-        buttons = ttk.Frame(parent)
-        buttons.pack(fill="x")
-        buttons.columnconfigure(0, weight=1)
-        buttons.columnconfigure(1, weight=1)
-        for i, (cmd, label) in enumerate(BUTTON_LABELS.items()):
-            accent = cmd == "start"
-            theme.flat_button(buttons, label,
-                              lambda c=cmd: self._dispatch_simple(c),
-                              accent=accent).grid(
-                row=i // 2, column=i % 2, sticky="ew", padx=4, pady=4)
+        theme.flat_button(parent, BUTTON_LABELS["start"],
+                          lambda: self._dispatch_simple("start"),
+                          accent=True).pack(fill="x", ipady=6, pady=(2, 10))
+
+        row = ttk.Frame(parent)
+        row.pack(fill="x")
+        for i, cmd in enumerate(CONTROL_ROW):
+            row.columnconfigure(i, weight=1)
+            theme.flat_button(row, BUTTON_LABELS[cmd],
+                              lambda c=cmd: self._dispatch_simple(c)).grid(
+                row=0, column=i, sticky="ew", padx=3)
 
         theme.flat_button(parent, "🏠  Volver a la base (con reintentos)",
-                          self._dispatch_dock_retry).pack(fill="x", pady=(10, 4))
+                          self._dispatch_dock_retry).pack(fill="x", pady=(10, 0))
 
-        dock_frame = ttk.LabelFrame(parent, text=" Base AutoWash ", padding=10)
-        dock_frame.pack(fill="x", pady=(10, 0))
+        maint = self._section(parent, "Mantenimiento")
         for i, (label, cmd) in enumerate(DOCK_COMMANDS.items()):
-            theme.flat_button(dock_frame, label,
+            maint.columnconfigure(i, weight=1)
+            theme.flat_button(maint, label,
                               lambda c=cmd: self._dispatch_dock_command(c)).grid(
                 row=0, column=i, sticky="ew", padx=3)
-            dock_frame.columnconfigure(i, weight=1)
+
+        log_inner = self._section(parent, "Registro de actividad")
+        self.log_text = scrolledtext.ScrolledText(
+            log_inner, height=6, state="disabled", bg=theme.SURFACE, fg=theme.TEXT,
+            highlightthickness=0, bd=0, font=theme.FONT_MONO, padx=4, pady=0)
+        self.log_text.pack(fill="both", expand=True)
 
     def _build_rooms(self, parent):
         top = ttk.Frame(parent)
-        top.pack(fill="x", pady=(0, 8))
+        top.pack(fill="x", pady=(0, 10))
         theme.flat_button(top, "↻  Actualizar habitaciones",
                           self._dispatch_load_rooms).pack(side="left")
 
-        options = ttk.LabelFrame(parent, text=" Opciones de limpieza ", padding=10)
-        options.pack(fill="x", pady=(0, 8))
-        ttk.Label(options, text="Succión", style="Card.Dim.TLabel").grid(row=0, column=0, padx=(0, 6))
+        options = self._section(parent, "Opciones de limpieza")
+        ttk.Label(options, text="Succión", style="Card.Dim.TLabel").grid(
+            row=0, column=0, padx=(0, 6))
         self.suction_var = tk.StringVar(value=SUCTION_OPTIONS[""])
         ttk.Combobox(options, textvariable=self.suction_var, state="readonly",
-                     width=14, values=list(SUCTION_OPTIONS.values())).grid(row=0, column=1, padx=(0, 20))
-        ttk.Label(options, text="Fregado", style="Card.Dim.TLabel").grid(row=0, column=2, padx=(0, 6))
+                     width=14, values=list(SUCTION_OPTIONS.values())).grid(
+            row=0, column=1, padx=(0, 20))
+        ttk.Label(options, text="Fregado", style="Card.Dim.TLabel").grid(
+            row=0, column=2, padx=(0, 6))
         self.pad_var = tk.StringVar(value=PAD_OPTIONS[""])
         ttk.Combobox(options, textvariable=self.pad_var, state="readonly",
                      width=14, values=list(PAD_OPTIONS.values())).grid(row=0, column=3)
         options.columnconfigure(4, weight=1)
 
-        ttk.Label(parent, text="Ctrl+clic o Shift+clic para seleccionar varias",
+        rooms_card = self._section(parent, "Habitaciones y zonas")
+        ttk.Label(rooms_card, text="Ctrl+clic o Shift+clic para seleccionar varias",
                   style="Card.Dim.TLabel").pack(anchor="w", pady=(0, 4))
-        self.rooms_list = theme.listbox(parent)
+        self.rooms_list = theme.listbox(rooms_card)
         self.rooms_list.pack(fill="both", expand=True, pady=(0, 8))
 
         theme.flat_button(parent, "▶  Limpiar habitaciones seleccionadas",
-                          self._dispatch_clean_rooms, accent=True).pack(fill="x")
+                          self._dispatch_clean_rooms, accent=True).pack(
+            fill="x", ipady=4)
 
     def _build_routines(self, parent):
         top = ttk.Frame(parent)
-        top.pack(fill="x", pady=(0, 8))
+        top.pack(fill="x", pady=(0, 10))
         theme.flat_button(top, "↻  Actualizar rutinas",
                           self._dispatch_load_favorites).pack(side="left")
 
-        ttk.Label(parent, text="Rutinas guardadas en tu cuenta de iRobot",
-                  style="Card.Dim.TLabel").pack(anchor="w", pady=(0, 4))
-        self.favorites_list = theme.listbox(parent)
+        card = self._section(parent, "Rutinas guardadas en tu cuenta de iRobot")
+        self.favorites_list = theme.listbox(card)
         self.favorites_list.pack(fill="both", expand=True, pady=(0, 8))
-        self.favorites_list.bind("<Double-Button-1>", lambda _: self._dispatch_start_favorite())
+        self.favorites_list.bind("<Double-Button-1>",
+                                 lambda _: self._dispatch_start_favorite())
 
         theme.flat_button(parent, "▶  Iniciar rutina seleccionada",
-                          self._dispatch_start_favorite, accent=True).pack(fill="x")
+                          self._dispatch_start_favorite, accent=True).pack(
+            fill="x", ipady=4)
 
     def _build_schedules(self, parent):
         top = ttk.Frame(parent)
-        top.pack(fill="x", pady=(0, 8))
+        top.pack(fill="x", pady=(0, 10))
         theme.flat_button(top, "↻  Actualizar programaciones",
                           self._dispatch_load_schedules).pack(side="left")
 
+        card = self._section(parent, "Programaciones")
         columns = ("name", "time", "days", "enabled")
-        self.schedules_tree = ttk.Treeview(parent, columns=columns, show="headings", height=10)
+        self.schedules_tree = ttk.Treeview(card, columns=columns,
+                                           show="headings", height=10)
         self.schedules_tree.heading("name", text="Nombre")
         self.schedules_tree.heading("time", text="Hora")
         self.schedules_tree.heading("days", text="Días")
@@ -214,7 +291,7 @@ class RoombaGUI:
     def _log(self, message: str):
         def append():
             self.log_text.configure(state="normal")
-            self.log_text.insert("end", message + "\n")
+            self.log_text.insert("end", f"{time.strftime('%H:%M')}  {message}\n")
             self.log_text.see("end")
             self.log_text.configure(state="disabled")
         self.root.after(0, append)
@@ -396,10 +473,35 @@ class RoombaGUI:
         try:
             status = self.backend.get_status()
         except Exception:
+            self.root.after(0, lambda: self._set_online(False))
             return
         self.root.after(0, lambda: self._update_status(status))
 
+    def _set_online(self, online: bool):
+        color = theme.SUCCESS if online else theme.DANGER
+        text = "En línea" if online else "Sin conexión"
+        self.status_dot.delete("all")
+        self.status_dot.create_oval(1, 1, 10, 10, fill=color, width=0)
+        self.online_label.configure(text=text)
+
+    def _draw_battery(self, pct):
+        canvas = self.battery_canvas
+        canvas.delete("all")
+        width = 130
+        height = 10
+        canvas.create_rectangle(0, 0, width, height, outline=theme.BORDER, width=1)
+        if pct:
+            fill = (theme.SUCCESS if pct >= 30
+                    else theme.WARNING if pct >= 15 else theme.DANGER)
+            canvas.create_rectangle(1, 1, 1 + (width - 2) * pct / 100,
+                                    height - 1, fill=fill, width=0)
+
     def _update_status(self, status: dict):
+        self._set_online(True)
+        battery = status.get("batPct")
+        if battery is not None:
+            self.battery_label.configure(text=f"Batería {battery}%")
+            self._draw_battery(int(battery))
         mission = status.get("cleanMissionStatus") or {}
         phase = mission.get("phase")
         if phase:

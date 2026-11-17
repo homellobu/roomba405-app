@@ -175,9 +175,14 @@ class PrimeBackend:
 
     async def _schedules_async(self) -> list[dict]:
         households = await self.robot.get_user_households()
-        entries = households.get("household") or households.get("households") or []
+        if isinstance(households, list):
+            entries = households
+        else:
+            entries = households.get("household") or households.get("households") or []
         schedules = []
         for entry in entries:
+            if not isinstance(entry, dict):
+                continue
             household_id = entry.get("household_id")
             if not household_id:
                 continue

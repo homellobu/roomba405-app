@@ -168,6 +168,17 @@ def test_get_schedules():
     }]
 
 
+def test_get_schedules_accepts_list_of_households():
+    class ListHouseholdsRobot(FakeRobot):
+        async def get_user_households(self):
+            return [{"household_id": "H1"}]
+
+    backend = make_backend()
+    backend.robot = ListHouseholdsRobot()
+    schedules = backend.get_schedules()
+    assert schedules and schedules[0]["id"] == "S1"
+
+
 def test_get_status_merges_shadows():
     class ShadowRobot(FakeRobot):
         async def get_state(self):

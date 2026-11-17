@@ -1,23 +1,24 @@
 import tkinter as tk
 from tkinter import ttk
 
-BG = "#f2f3f5"
+BG = "#f5f6f8"
+SIDEBAR = "#f7f8fa"
 SURFACE = "#ffffff"
 SURFACE_2 = "#e9ebee"
-BORDER = "#e2e4e8"
+BORDER = "#e3e5e9"
 TEXT = "#1a1c20"
 TEXT_DIM = "#6b7280"
-ACCENT = "#22a55e"
-ACCENT_DARK = "#1b8a4e"
-SUCCESS = "#22a55e"
+ACCENT = "#2f95a8"
+ACCENT_DARK = "#267e8e"
+SUCCESS = "#34a853"
 WARNING = "#e8a13f"
 DANGER = "#e05d5d"
 
 FONT = ("Helvetica Neue", 13)
 FONT_SMALL = ("Helvetica Neue", 11)
-FONT_TITLE = ("Helvetica Neue", 17, "bold")
+FONT_TITLE = ("Helvetica Neue", 18, "bold")
 FONT_PHASE = ("Helvetica Neue", 12, "bold")
-FONT_MONO = ("Menlo", 12)
+FONT_MONO = ("Menlo", 11)
 
 
 def apply(root: tk.Tk):
@@ -31,10 +32,12 @@ def apply(root: tk.Tk):
     style.configure(".", background=BG, foreground=TEXT, font=FONT)
     style.configure("TFrame", background=BG)
     style.configure("Card.TFrame", background=SURFACE)
+    style.configure("Sidebar.TFrame", background=SIDEBAR)
     style.configure("TLabel", background=BG, foreground=TEXT, font=FONT)
     style.configure("Card.TLabel", background=SURFACE, foreground=TEXT, font=FONT)
     style.configure("Dim.TLabel", background=BG, foreground=TEXT_DIM, font=FONT_SMALL)
     style.configure("Card.Dim.TLabel", background=SURFACE, foreground=TEXT_DIM, font=FONT_SMALL)
+    style.configure("Sidebar.Dim.TLabel", background=SIDEBAR, foreground=TEXT_DIM, font=FONT_SMALL)
     style.configure("Title.TLabel", background=BG, foreground=TEXT, font=FONT_TITLE)
 
     style.configure("TNotebook", background=BG, borderwidth=0, tabmargins=(0, 4, 0, 0))
@@ -45,15 +48,28 @@ def apply(root: tk.Tk):
               foreground=[("selected", TEXT)])
 
     style.configure("TButton", background=SURFACE_2, foreground=TEXT,
-                    borderwidth=0, focusthickness=0, padding=(16, 9), font=FONT)
+                    borderwidth=0, focusthickness=0, padding=(14, 8), font=FONT)
     style.map("TButton",
               background=[("active", BORDER), ("pressed", BORDER)],
               foreground=[("active", TEXT), ("pressed", TEXT)])
     style.configure("Accent.TButton", background=ACCENT, foreground="#ffffff",
-                    borderwidth=0, focusthickness=0, padding=(16, 9), font=FONT)
+                    borderwidth=0, focusthickness=0, padding=(14, 8), font=FONT)
     style.map("Accent.TButton",
               background=[("active", ACCENT_DARK), ("pressed", ACCENT_DARK)],
               foreground=[("active", "#ffffff"), ("pressed", "#ffffff")])
+
+    style.configure("Nav.TButton", background=SIDEBAR, foreground=TEXT_DIM,
+                    borderwidth=0, focusthickness=0, padding=(14, 9),
+                    font=FONT, anchor="w")
+    style.map("Nav.TButton",
+              background=[("active", SURFACE), ("pressed", SURFACE)],
+              foreground=[("active", TEXT), ("pressed", TEXT)])
+    style.configure("NavActive.TButton", background=SURFACE, foreground=ACCENT,
+                    borderwidth=0, focusthickness=0, padding=(14, 9),
+                    font=FONT_PHASE, anchor="w")
+    style.map("NavActive.TButton",
+              background=[("active", SURFACE), ("pressed", SURFACE)],
+              foreground=[("active", ACCENT), ("pressed", ACCENT)])
 
     style.configure("TLabelframe", background=SURFACE, foreground=TEXT_DIM, borderwidth=0)
     style.configure("TLabelframe.Label", background=SURFACE, foreground=TEXT_DIM, font=FONT_SMALL)
@@ -79,11 +95,26 @@ def card(parent, **kwargs):
                     highlightthickness=1, **kwargs)
 
 
-def flat_button(parent, text, command, accent=False, width=None):
-    return ttk.Button(
-        parent, text=text, command=command, width=width,
-        style="Accent.TButton" if accent else "TButton",
-    )
+def flat_button(parent, text, command, accent=False, width=None, style_name=None):
+    name = style_name or ("Accent.TButton" if accent else "TButton")
+    return ttk.Button(parent, text=text, command=command, width=width, style=name)
+
+
+def nav_button(parent, text, command, active=False):
+    return ttk.Button(parent, text=text, command=command,
+                      style="NavActive.TButton" if active else "Nav.TButton")
+
+
+def battery_bar(parent, value=None, width=140, height=10):
+    pct = 0 if value is None else max(0, min(100, int(value)))
+    canvas = tk.Canvas(parent, width=width, height=height, bg=SURFACE,
+                       highlightthickness=0, bd=0)
+    canvas.create_rectangle(0, 0, width, height, outline=BORDER, width=1)
+    if pct:
+        fill = SUCCESS if pct >= 30 else WARNING if pct >= 15 else DANGER
+        canvas.create_rectangle(1, 1, 1 + (width - 2) * pct / 100, height - 1,
+                                fill=fill, width=0)
+    return canvas
 
 
 def listbox(parent, **kwargs):
