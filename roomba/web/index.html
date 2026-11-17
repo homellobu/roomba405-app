@@ -34,13 +34,6 @@
     font-size: 0.85em; letter-spacing: 0.16em; font-weight: 600;
     color: var(--dim); text-transform: uppercase;
   }
-  #statusline {
-    position: absolute; left: 4.6%; top: 24%; width: 34%;
-    font-size: 1.5em; font-weight: 600; color: var(--dim);
-  }
-  #statusline.ok { color: #3f6d3f; }
-  #statusline.warn { color: #a8842f; }
-  #statusline.bad { color: var(--bad); }
   .panel {
     position: absolute; left: 56.3%; top: 14.65%; width: 37.7%; height: 55.9%;
     background: #fff; border-radius: 1.6em;
@@ -81,13 +74,21 @@
   .round.small { width: 2.9em; height: 2.9em; font-size: 1.15em; }
   .round:hover { box-shadow: 0 0.5em 1.4em rgba(60, 65, 40, 0.22); }
   .round:active { transform: scale(0.93); }
-  #conn-dot {
-    position: absolute; right: 9.4%; top: 4.4%;
-    width: 1em; height: 1em; border-radius: 50%; background: var(--dim);
-    box-shadow: 0 0.2em 0.6em rgba(60, 65, 40, 0.25);
+  .maintcard {
+    position: absolute; left: 2%; top: 77.5%; width: 96%; height: 21%;
+    background: #fff; border-radius: 1.4em;
+    box-shadow: 0 0.8em 2.4em rgba(60, 65, 40, 0.14);
+    padding: 1.1em 2.4em;
+    display: flex; align-items: center; gap: 2em;
   }
-  #conn-dot.ok { background: var(--ok); }
-  #conn-dot.bad { background: var(--bad); }
+  .maint-head { width: 16em; flex-shrink: 0; }
+  #statusline { font-size: 1.4em; font-weight: 600; color: var(--dim); margin-top: 0.4em; }
+  #statusline.ok { color: #3f6d3f; }
+  #statusline.warn { color: #a8842f; }
+  #statusline.bad { color: var(--bad); }
+  .rings { display: flex; flex: 1; justify-content: space-around; align-items: center; }
+  .ring { text-align: center; }
+  .ring .lbl { font-size: 0.85em; color: var(--dim); margin-top: 0.25em; }
   #gear-hotspot {
     position: absolute; right: 3.4%; top: 2.6%; width: 4.5%; height: 6.5%;
     cursor: pointer; border-radius: 50%; z-index: 6;
@@ -148,7 +149,6 @@
 </head>
 <body>
 <div id="stage">
-  <div id="statusline">Conectando…</div>
 
   <div class="panel">
     <div class="overlay-label">Selecciona una habitación</div>
@@ -196,14 +196,21 @@
     </div>
   </div>
 
-  <div id="conn-dot" title="Conexión con el robot"></div>
+  <div class="maintcard">
+    <div class="maint-head">
+      <div class="overlay-label">Estado de mantenimiento</div>
+      <div id="statusline">Conectando…</div>
+    </div>
+    <div class="rings">
+      <div class="ring" id="ring-bat-box"></div>
+      <div class="ring" id="ring-bin-box"></div>
+      <div class="ring" id="ring-conn-box"></div>
+    </div>
+  </div>
   <div id="gear-hotspot" title="Ajustes"></div>
 
   <div id="drawer">
     <button id="drawer-close" title="Cerrar">✕</button>
-    <h3>Robot</h3>
-    <div id="robot-info" class="empty">Sin datos todavía.</div>
-
     <h3>Habitaciones</h3>
     <div class="row">
       <button class="btn-pill" id="btn-load-rooms">↻ Actualizar</button>
@@ -237,6 +244,7 @@
 <script>
 const $ = (id) => document.getElementById(id);
 const stage = $("stage");
+const C = 2 * Math.PI * 30;
 const PHASES = {
   "charge": "Cargando", "run": "Limpiando", "stop": "En reposo", "pause": "En pausa",
   "hmUsrDock": "Volviendo a la base", "hmMidMsn": "Volviendo (media misión)",
@@ -271,19 +279,24 @@ async function api(path, body) {
   return data;
 }
 
-function setConn(ok) {
-  $("conn-dot").className = ok ? "ok" : "bad";
+function ring(el, frac, color, icon, value, label) {
+  const off = C * (1 - Math.max(0, Math.min(1, frac)));
+  const R = 4.6;
+  el.innerHTML = `
+    <svg width="${R * 2}em" height="${R * 2}em" viewBox="0 0 100 100" style="width:${R * 2}em;height:${R * 2}em;">
+      <circle cx="50" cy="50" r="30" stroke="var(--ring)" stroke-width="11" fill="#fff"/>
+      <circle cx="50" cy="50" r="30" stroke="${color}" stroke-width="11" fill="none"
+        stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${off}"
+        transform="rotate(-90 50 50)"/>
+      <text x="50" y="46" text-anchor="middle" font-size="26">${icon}</text>
+      <text x="50" y="72" text-anchor="middle" font-size="22" font-weight="700"
+        fill="var(--text)" font-family="inherit">${value}</text>
+    </svg>
+    <div class="lbl">${label}</div>`;
 }
 
-function robotInfo(st) {
-  const bits = [];
-  const bat = st.batPct;
-  bits.push("Batería: " + (bat !== undefined && bat !== null ? bat + "%" : "—"));
-  const bin = st.bin || null;
-  bits.push("Depósito: " + (!bin ? "—" : bin.full ? "lleno" : bin.present === false ? "ausente" : "OK"));
-  const el = $("robot-info");
-  el.className = "";
-  el.textContent = bits.join(" · ");
+function setConn(ok) {
+  ring($("ring-conn-box"), ok ? 1 : 0, ok ? "var(--ok)" : "var(--bad)", "📶", ok ? "OK" : "Sin", "Conexión");
 }
 
 function updateStatus(st) {
@@ -301,9 +314,21 @@ function updateStatus(st) {
     line.textContent = "Robot en línea";
     line.classList.add("ok");
   }
-  robotInfo(st);
+  const bat = st.batPct;
+  if (bat !== undefined && bat !== null) {
+    const pct = Math.max(0, Math.min(100, bat));
+    const color = pct >= 30 ? "var(--ok)" : pct >= 15 ? "var(--warn)" : "var(--bad)";
+    ring($("ring-bat-box"), pct / 100, color, "🔋", pct + "%", "Batería");
+  } else {
+    ring($("ring-bat-box"), 0, "var(--dim)", "🔋", "—", "Batería");
+  }
+  const bin = st.bin || null;
+  if (!bin) ring($("ring-bin-box"), 0, "var(--dim)", "🗑", "—", "Depósito");
+  else if (bin.full) ring($("ring-bin-box"), 1, "var(--warn)", "🗑", "Lleno", "Depósito");
+  else if (bin.present === false) ring($("ring-bin-box"), 0, "var(--bad)", "🗑", "Ausente", "Depósito");
+  else ring($("ring-bin-box"), 1, "var(--ok)", "🗑", "OK", "Depósito");
   if (m.phase === "run" || m.phase === "charge") {
-    log("Estado: " + (PHASES[m.phase] || m.phase) + (st.batPct !== undefined ? " · batería " + st.batPct + "%" : ""));
+    log("Estado: " + (PHASES[m.phase] || m.phase) + (bat !== undefined ? " · batería " + bat + "%" : ""));
   }
 }
 
@@ -459,6 +484,9 @@ $("btn-load-scheds").addEventListener("click", async () => {
   } catch (e) { log("✗ No se pudieron cargar programaciones: " + e.message); }
 });
 
+ring($("ring-bat-box"), 0, "var(--dim)", "🔋", "—", "Batería");
+ring($("ring-bin-box"), 0, "var(--dim)", "🗑", "—", "Depósito");
+ring($("ring-conn-box"), 0, "var(--dim)", "📶", "—", "Conexión");
 refresh();
 setInterval(refresh, 8000);
 </script>
