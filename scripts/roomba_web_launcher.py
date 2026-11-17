@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 import os
 import sys
+import threading
+import time
 import traceback
-import webbrowser
 from pathlib import Path
 
 ERROR_LOG = Path.home() / ".roomba_app" / "ultimo_error.txt"
@@ -41,10 +42,26 @@ def run():
     backend.connect()
     app = WebApp(backend, robot_name=robot_name)
     print(f"Roomba ({robot_name}): interfaz disponible en {app.url}")
-    print("Cierra esta ventana o pulsa Ctrl+C para salir.")
-    webbrowser.open(app.url)
+
+    server_thread = threading.Thread(target=app.serve_forever, daemon=True)
+    server_thread.start()
+
     try:
-        app.serve_forever()
+        import webview
+
+        webview.create_window(f"Roomba — {robot_name}", app.url,
+                              width=1120, height=780, min_size=(900, 640))
+        webview.start()
+    except ImportError:
+        print("pywebview no está instalado; abriendo el navegador. "
+              "Instala con: pip install -e \".[dev]\"")
+        import webbrowser
+        webbrowser.open(app.url)
+        try:
+            while True:
+                time.sleep(3600)
+        except KeyboardInterrupt:
+            pass
     finally:
         backend.close()
 

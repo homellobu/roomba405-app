@@ -128,9 +128,9 @@ Aplicaciones si quieres (`mv Roomba.app /Applications/`) y ábrela con doble
 clic. La primera vez, si macOS muestra el aviso de "desarrollador no
 verificado", haz clic derecho sobre la app > **Abrir** > **Abrir**.
 
-La app abre una interfaz web moderna (misma estética que el diseño de
-referencia) servida solo en tu máquina (`127.0.0.1`) en una ventana del
-navegador; el proceso Python debe seguir abierto mientras la uses.
+La app abre una ventana propia (interfaz web moderna, misma estética que el
+diseño de referencia) servida solo en tu máquina (`127.0.0.1`); si falta
+`pywebview`, abre el navegador como alternativa.
 
 La app usa el mismo entorno virtual del proyecto, así que actualiza con
 `git pull` y vuelve a ejecutar el script si cambias de versión.

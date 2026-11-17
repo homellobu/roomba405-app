@@ -7,7 +7,7 @@ name = "roomba-app"
 version = "0.1.0"
 description = "Controla tu Roomba 405 Combo (protocolo V4 de iRobot) desde la terminal"
 requires-python = ">=3.11"
-dependencies = ["requests>=2.31", "awsiotsdk>=1.20", "roombapy-prime>=0.9", "certifi"]
+dependencies = ["requests>=2.31", "awsiotsdk>=1.20", "roombapy-prime>=0.9", "certifi", "pywebview>=5"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
