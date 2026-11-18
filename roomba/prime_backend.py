@@ -76,6 +76,44 @@ class PrimeBackend:
     def get_rooms(self) -> list[dict]:
         return self._call(self._rooms_async())
 
+    def get_map(self):
+        return self._call(self._map_async())
+
+    async def _map_async(self):
+        from roombapy_prime.models import parse_map_bundle
+        from roombapy_prime.models.robot_info import parse_active_map_versions
+
+        versions = parse_active_map_versions(await self.robot.get_active_map_versions())
+        if not versions:
+            return None
+        version = versions[0]
+        p2map_id = version.p2map_id
+        version_id = None
+        for attr in ("user_p2mapv_id", "active_p2mapv_id", "p2mapv_id"):
+            value = getattr(version, attr, None)
+            if value:
+                version_id = value
+                break
+        if not version_id:
+            metadata = await self.robot.get_map_metadata(p2map_id)
+            version_id = metadata.current_map_version
+        if not version_id:
+            return None
+        link = await self.robot.get_map_geojson_link(p2map_id, version_id)
+        url = link.get("map_url") or next(
+            (v for v in link.values() if isinstance(v, str) and v.startswith("http")), None
+        )
+        if not url:
+            return None
+        bundle = await self.robot.download_map_bundle(url)
+        parsed = parse_map_bundle(bundle)
+        for content in parsed.values():
+            if isinstance(content, dict) and (
+                content.get("type") == "FeatureCollection" or "features" in content
+            ):
+                return content
+        return None
+
     async def _rooms_async(self) -> list[dict]:
         from roombapy_prime.models.robot_info import parse_active_map_versions
 

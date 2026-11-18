@@ -114,6 +114,13 @@ class _Handler(BaseHTTPRequestHandler):
                 self._json(200, {"ok": True, "rooms": self.app.backend.get_rooms()})
             except Exception as e:
                 self._api_error(e)
+        elif path == "/api/map":
+            if not self._backend_ready():
+                return
+            try:
+                self._json(200, {"ok": True, "map": self.app.backend.get_map()})
+            except Exception as e:
+                self._api_error(e)
         elif path == "/api/favorites":
             if not self._backend_ready():
                 return

@@ -15,6 +15,15 @@ class FakeBackend:
         self.favorites = [{"id": "F1", "name": "Noche", "steps": 2}]
         self.schedules = [{"id": "S1", "name": "Lunes", "enabled": True,
                            "time": "09:30", "days": "mon"}]
+        self.geojson = {
+            "type": "FeatureCollection",
+            "features": [{
+                "type": "Feature",
+                "geometry": {"type": "Polygon", "coordinates": [
+                    [[0, 0], [10, 0], [10, 8], [0, 8], [0, 0]]]},
+                "properties": {"name": "Salón"},
+            }],
+        }
         self.fail_status = False
 
     def get_status(self):
@@ -42,6 +51,9 @@ class FakeBackend:
 
     def get_schedules(self):
         return self.schedules
+
+    def get_map(self):
+        return self.geojson
 
 
 @pytest.fixture()
@@ -72,13 +84,40 @@ def test_index_served(server):
     with urllib.request.urlopen(url, timeout=5) as res:
         html = res.read().decode()
         assert res.headers["Content-Type"].startswith("text/html")
-    assert "Empezar limpieza" in html
-    assert "Selecciona una habitaci\u00f3n" in html
-    assert "Mantenimiento" in html
-    with urllib.request.urlopen(url + "plate.jpg", timeout=5) as res:
-        assert res.headers["Content-Type"] == "image/jpeg"
+    for texto in (
+        "Limpiar toda la casa",
+        "Mapa de la casa",
+        "Mantenimiento",
+        "Registro de actividad",
+        "Habitaciones",
+        "Rutinas",
+        "Programaciones",
+    ):
+        assert texto in html
     with urllib.request.urlopen(url + "classic.html", timeout=5) as res:
         assert b"Tu casa, en calma" in res.read()
+
+
+def test_map_endpoint(server):
+    backend, url = server
+    data = get(url + "api/map")
+    assert data["ok"] is True
+    assert data["map"]["type"] == "FeatureCollection"
+    backend.geojson = None
+    data = get(url + "api/map")
+    assert data["ok"] is True and data["map"] is None
+
+
+def test_map_endpoint_connecting():
+    app = WebApp(robot_name="Test")
+    thread = __import__("threading").Thread(target=app.serve_forever, daemon=True)
+    thread.start()
+    try:
+        with pytest.raises(urllib.error.HTTPError) as exc:
+            get(app.url + "api/map")
+        assert exc.value.code == 503
+    finally:
+        app.shutdown()
 
 
 def test_status_endpoint(server):
