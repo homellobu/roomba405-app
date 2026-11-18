@@ -27,6 +27,7 @@ class PrimeBackend:
         self._map_cache = None
         self._trail = []
         self._trail_task = None
+        self._trail_error = None
         self._aiohttp_session = None
         self._started = threading.Event()
 
@@ -299,6 +300,7 @@ class PrimeBackend:
             if self._trail_task and not self._trail_task.done():
                 return
             self._trail.clear()
+            self._trail_error = None
             self._trail_task = self._loop.create_task(self._trail_watch())
 
         self._loop.call_soon_threadsafe(start)
@@ -325,6 +327,7 @@ class PrimeBackend:
         except asyncio.CancelledError:
             raise
         except Exception as e:
+            self._trail_error = str(e) or repr(e)
             log.warning("stream de posición terminado: %s", e)
         finally:
             self._trail_task = None

@@ -335,6 +335,7 @@ let favorites = [];
 let mapGeojson = null;
 let trailPts = [];
 let lastTrailLen = -1;
+let trailWarned = false;
 
 function log(msg) {
   const box = $("log");
@@ -414,6 +415,10 @@ async function refresh() {
           lastTrailLen = d.trail.length;
           if (mapGeojson) renderMap(mapGeojson);
         }
+        if (!trailWarned && d.error) {
+          trailWarned = true;
+          log("\u2717 Recorrido en vivo no disponible: " + d.error);
+        }
       }).catch(() => {});
     }
     if (!$("robot-select").dataset.loaded) {
@@ -481,7 +486,7 @@ function renderMap(geojson) {
   const pad = (Math.max(maxX - minX, maxY - minY) || 1) * 0.08;
   minX -= pad; maxX += pad; minY -= pad; maxY += pad;
   const W = maxX - minX, H = maxY - minY;
-  const stroke = Math.max(W, H) * 0.005;
+  const stroke = Math.max(W, H) * 0.0025;
   const pathOf = (points) => points.map((pt, i) => {
     const p = flip(pt);
     return (i ? "L" : "M") + p[0].toFixed(3) + " " + p[1].toFixed(3);

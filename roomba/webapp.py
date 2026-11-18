@@ -137,7 +137,11 @@ class _Handler(BaseHTTPRequestHandler):
             if not self._backend_ready():
                 return
             try:
-                self._json(200, {"ok": True, "trail": self.app.backend.get_trail()})
+                trail = self.app.backend.get_trail()
+                task = getattr(self.app.backend, "_trail_task", None)
+                self._json(200, {"ok": True, "trail": trail,
+                                 "active": bool(task and not task.done()),
+                                 "error": getattr(self.app.backend, "_trail_error", None)})
             except Exception as e:
                 self._api_error(e)
         elif path == "/api/favorites":

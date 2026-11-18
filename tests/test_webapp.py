@@ -225,6 +225,7 @@ def test_connecting_state():
 
 def test_trail_endpoint(server):
     backend, url = server
-    assert get(url + "api/trail") == {"ok": True, "trail": []}
+    assert get(url + "api/trail") == {"ok": True, "trail": [], "active": False, "error": None}
     backend.trail = [[1.0, 2.0], [3.0, 4.0]]
-    assert get(url + "api/trail") == {"ok": True, "trail": [[1.0, 2.0], [3.0, 4.0]]}
+    data = get(url + "api/trail")
+    assert data["trail"] == [[1.0, 2.0], [3.0, 4.0]]
