@@ -1,4 +1,5 @@
 import json
+import threading
 import urllib.request
 
 import pytest
@@ -135,12 +136,42 @@ def test_status_endpoint(server):
     assert data["status"]["batPct"] == 80
     assert data["trail"] == {"active": False, "points": 0,
                              "error": None, "phase": "charge"}
+    assert data["lan"] == {"enabled": False, "url": None}
     backend.fail_status = True
     try:
         get(url + "api/status")
         raise AssertionError("debía fallar")
     except urllib.error.HTTPError as e:
         assert e.code == 503
+    backend.fail_status = False
+
+
+class FakeStore:
+    def __init__(self):
+        self.data = {}
+
+    def save(self):
+        pass
+
+
+def test_lan_toggle():
+    app = WebApp(robot_name="Test", store=FakeStore())
+    app.lan_bind_host = "127.0.0.1"
+    threading.Thread(target=app.serve_forever, daemon=True).start()
+    try:
+        data = get(app.url + "api/lan")
+        assert data == {"ok": True, "lan": {"enabled": False, "url": None}}
+        data = post(app.url + "api/lan", {"enabled": True})
+        assert data["ok"] is True and data["enabled"] is True and data["url"]
+        assert app.store.data["lan_access"] is True
+        data = get(data["url"] + "api/lan")
+        assert data["lan"]["enabled"] is True
+        post(app.url + "api/lan", {"enabled": False})
+        data = get(app.url + "api/lan")
+        assert data["lan"] == {"enabled": False, "url": None}
+        assert app.store.data["lan_access"] is False
+    finally:
+        app.shutdown()
 
 
 def test_command_endpoints(server):

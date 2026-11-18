@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <title>Roomba</title>
 <link rel="icon" type="image/png" href="/icon.png">
+<link rel="apple-touch-icon" href="/icon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   :root {
     --bg: #f5f6f8;
@@ -51,7 +53,27 @@
   nav .item.active { background: var(--accent-soft); font-weight: 600; }
   #robot-select { display: none; width: calc(100% - 20px); margin: 0 10px 10px; font-size: 13px; }
   #robot-select.show { display: block; }
-  .side-footer { margin-top: auto; padding: 10px 12px 0; font-size: 11px; color: var(--dim); }
+  .lan {
+    margin-top: auto; padding: 10px 12px;
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .lan .t { font-size: 12px; font-weight: 600; }
+  .lan .u { font-size: 10.5px; color: var(--dim); word-break: break-all; margin-top: 2px; display: none; }
+  .switch { position: relative; width: 34px; height: 20px; flex-shrink: 0; }
+  .switch input { display: none; }
+  .switch .sl {
+    position: absolute; inset: 0; border-radius: 10px;
+    background: rgba(0, 0, 0, 0.18); transition: background 0.18s; cursor: pointer;
+  }
+  .switch .sl::after {
+    content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
+    border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    transition: transform 0.18s;
+  }
+  .switch input:checked + .sl { background: var(--green); }
+  .switch input:checked + .sl::after { transform: translateX(14px); }
+  .side-footer { padding: 10px 12px 0; font-size: 11px; color: var(--dim); }
   main { flex: 1; height: 100%; overflow-y: auto; padding: 26px 30px; }
   .view { display: none; flex-direction: column; gap: 16px; max-width: 1200px; margin: 0 auto; }
   .view.active { display: flex; }
@@ -168,6 +190,16 @@
       Programaciones
     </div>
   </nav>
+  <div class="lan">
+    <div>
+      <div class="t">iPhone y iPad</div>
+      <div class="u" id="lan-url"></div>
+    </div>
+    <label class="switch">
+      <input type="checkbox" id="lan-toggle">
+      <span class="sl"></span>
+    </label>
+  </div>
   <div class="side-footer">Roomba 405 Combo</div>
 </aside>
 
@@ -346,6 +378,17 @@ function noteTrailError(error) {
     lastTrailError = null;
   }
 }
+function updateLan(lan) {
+  if (!lan) return;
+  $("lan-toggle").checked = !!lan.enabled;
+  const box = $("lan-url");
+  if (lan.enabled && lan.url) {
+    if (box.textContent !== lan.url) box.textContent = lan.url;
+    box.style.display = "block";
+  } else {
+    box.style.display = "none";
+  }
+}
 let wasConnecting = null;
 
 function log(msg) {
@@ -427,6 +470,7 @@ async function refresh() {
       $("side-robot").textContent = data.robot || "";
       updateStatus(data.status || {});
       if (data.trail) noteTrailError(data.trail.error);
+      if (data.lan) updateLan(data.lan);
     }
     if (!$("robot-select").dataset.loaded) {
       await loadRobots(data.blid);
@@ -763,6 +807,20 @@ async function trailTick() {
     noteTrailError(d.error);
   } catch (e) {}
 }
+
+$("lan-toggle").addEventListener("change", async (ev) => {
+  const enabled = ev.target.checked;
+  try {
+    const d = await api("/api/lan", {enabled});
+    updateLan(d);
+    log(enabled ? "\u2713 Acceso para iPhone/iPad activado: " + d.url
+               : "Acceso para iPhone/iPad desactivado");
+    if (enabled) log("En el iPad abre esa direcci\u00f3n en Safari y usa Compartir > A\u00f1adir a pantalla de inicio");
+  } catch (e) {
+    ev.target.checked = !enabled;
+    log("\u2717 Acceso desde iPhone/iPad: " + e.message);
+  }
+});
 
 refresh();
 setInterval(refresh, 8000);

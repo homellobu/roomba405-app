@@ -85,7 +85,7 @@ def run():
 
     backend = PrimeBackend(store.email, store.password, country=country, blid=blid)
 
-    app = WebApp(robot_name=robot_name)
+    app = WebApp(robot_name=robot_name, store=store)
     robots_map = session["robots"]
     app.blid = blid
     app.robots = lambda: [{"name": robots_map[b].get("name", "Roomba"), "blid": b}
@@ -121,6 +121,10 @@ def run():
 
     app.robot_switcher = switch_robot
     log_step(f"servidor listo en {app.url}")
+    if store.data.get("lan_access"):
+        lan_url = app.lan_enable()
+        log_step(f"acceso iPhone/iPad activo en {lan_url}" if lan_url
+                 else "acceso iPhone/iPad pedido pero no se pudo abrir el puerto")
 
     server_thread = threading.Thread(target=app.serve_forever, daemon=True)
     server_thread.start()
