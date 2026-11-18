@@ -424,11 +424,14 @@ function renderMap(geojson) {
     box.innerHTML = '<div class="empty">Sin mapa disponible todav\u00eda.<br>Deja que el robot limpie o mapee una vez.</div>';
     return;
   }
-  const rooms = [];
-  const walls = [];
+  const rooms = [], walls = [], wallLines = [], zones = [], docks = [];
   geojson.features.forEach(f => {
     const g = f.geometry || {};
     const props = f.properties || {};
+    if (g.type === "Point") {
+      docks.push({pt: g.coordinates, props});
+      return;
+    }
     let rings = null;
     if (g.type === "Polygon") rings = g.coordinates;
     else if (g.type === "MultiPolygon") rings = g.coordinates.flat();
@@ -436,51 +439,81 @@ function renderMap(geojson) {
       rings = props.simplifiedGeometry.coordinates;
     }
     if (!rings) {
-      if (g.type === "LineString") walls.push(g.coordinates);
-      else if (g.type === "MultiLineString") walls.push(...g.coordinates);
+      if (g.type === "LineString") wallLines.push(g.coordinates);
+      else if (g.type === "MultiLineString") wallLines.push(...g.coordinates);
       return;
     }
     const usable = rings.filter(r => r && r.length >= 3);
     if (!usable.length) return;
-    rooms.push({f, props, rings: usable});
+    const name = props.name || props.NAME || props.Name;
+    const item = {rings: usable, name};
+    if (props.type === "KeepOutZone") zones.push(item);
+    else if (name) rooms.push(item);
+    else walls.push(item);
   });
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  rooms.forEach(r => r.rings.forEach(points => points.forEach(pt => track(pt))));
-  walls.forEach(points => points.forEach(pt => track(pt)));
-  function track(pt) {
-    if (pt[0] < minX) minX = pt[0];
-    if (pt[0] > maxX) maxX = pt[0];
-    if (pt[1] < minY) minY = pt[1];
-    if (pt[1] > maxY) maxY = pt[1];
+  function track(x, y) {
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
   }
-  if ((!rooms.length && !walls.length) || !isFinite(minX)) {
+  const flip = (pt) => [pt[0], -pt[1]];
+  rooms.concat(walls, zones).forEach(it => it.rings.forEach(points => points.forEach(pt => {
+    const p = flip(pt); track(p[0], p[1]);
+  })));
+  wallLines.forEach(points => points.forEach(pt => { const p = flip(pt); track(p[0], p[1]); }));
+  docks.forEach(d => { const p = flip(d.pt); track(p[0], p[1]); });
+  if ((!rooms.length && !walls.length && !wallLines.length) || !isFinite(minX)) {
     box.innerHTML = '<div class="empty">El mapa a\u00fan no tiene habitaciones dibujadas.</div>';
     return;
   }
-  const pad = (Math.max(maxX - minX, maxY - minY) || 1) * 0.06;
+  const pad = (Math.max(maxX - minX, maxY - minY) || 1) * 0.08;
   minX -= pad; maxX += pad; minY -= pad; maxY += pad;
   const W = maxX - minX, H = maxY - minY;
-  const parts = [];
-  rooms.forEach(({f, props, rings}) => {
+  const stroke = Math.max(W, H) * 0.012;
+  const pathOf = (points) => points.map((pt, i) => {
+    const p = flip(pt);
+    return (i ? "L" : "M") + p[0].toFixed(3) + " " + p[1].toFixed(3);
+  }).join(" ") + " Z";
+  const roomParts = [], wallParts = [], zoneParts = [], dockParts = [], labelParts = [];
+  rooms.forEach(({rings, name}) => {
     rings.forEach((points, ri) => {
-      const d = points.map((pt, i) => (i ? "L" : "M") + pt[0].toFixed(1) + " " + pt[1].toFixed(1)).join(" ") + " Z";
-      parts.push('<path d="' + d + '" fill="#cfe3ee" fill-opacity="0.75" stroke="#7fb3cc" stroke-width="2" stroke-linejoin="round"/>');
-      if (ri === 0) {
-        const name = props.name || props.NAME || props.Name;
-        if (name && W > 0) {
-          const cx = points.reduce((a, p) => a + p[0], 0) / points.length;
-          const cy = points.reduce((a, p) => a + p[1], 0) / points.length;
-          parts.push('<text x="' + cx.toFixed(1) + '" y="' + cy.toFixed(1) + '" text-anchor="middle" font-size="' + Math.max(12, W * 0.05) + '" fill="#33566a" font-family="inherit">' + String(name) + '</text>');
-        }
+      roomParts.push('<path d="' + pathOf(points) + '" fill="#cfe3ee" fill-opacity="0.7" stroke="#6fa7bd" stroke-width="' + stroke + '" stroke-linejoin="round"/>');
+      if (ri === 0 && name) {
+        const cx = points.reduce((a, p) => a + p[0], 0) / points.length;
+        const cy = points.reduce((a, p) => a + p[1], 0) / points.length;
+        labelParts.push('<text x="' + cx.toFixed(3) + '" y="' + (-cy).toFixed(3) + '" text-anchor="middle" dominant-baseline="middle" font-size="' + (W * 0.045) + '" font-weight="600" fill="#33566a" font-family="inherit">' + String(name) + '</text>');
       }
     });
   });
-  walls.forEach(points => {
-    if (!points || points.length < 2) return;
-    const d = points.map((pt, i) => (i ? "L" : "M") + pt[0].toFixed(1) + " " + pt[1].toFixed(1)).join(" ");
-    parts.push('<path d="' + d + '" fill="none" stroke="#8fb9cc" stroke-width="' + Math.max(3, W * 0.004) + '" stroke-linecap="round"/>');
+  walls.forEach(({rings}) => {
+    rings.forEach(points => {
+      if (points.length < 3) return;
+      wallParts.push('<path d="' + pathOf(points) + '" fill="#93b9cc" fill-opacity="0.9" stroke="none"/>');
+    });
   });
-  box.innerHTML = '<svg viewBox="' + minX + ' ' + minY + ' ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg">' + parts.join("") + '</svg>';
+  wallLines.forEach(points => {
+    if (!points || points.length < 2) return;
+    const d = points.map((pt, i) => {
+      const p = flip(pt);
+      return (i ? "L" : "M") + p[0].toFixed(3) + " " + p[1].toFixed(3);
+    }).join(" ");
+    wallParts.push('<path d="' + d + '" fill="none" stroke="#7fb3cc" stroke-width="' + stroke + '" stroke-linecap="round"/>');
+  });
+  zones.forEach(({rings}) => {
+    rings.forEach(points => {
+      zoneParts.push('<path d="' + pathOf(points) + '" fill="#f6ddd1" fill-opacity="0.55" stroke="#df8663" stroke-width="' + stroke + '" stroke-dasharray="' + (stroke * 2.5) + ' ' + (stroke * 1.5) + '"/>');
+    });
+  });
+  docks.forEach(({pt}) => {
+    const p = flip(pt);
+    dockParts.push('<g transform="translate(' + p[0].toFixed(3) + ' ' + p[1].toFixed(3) + ')">'
+      + '<rect x="' + (-W * 0.022) + '" y="' + (-W * 0.016) + '" width="' + (W * 0.044) + '" height="' + (W * 0.032) + '" rx="' + (W * 0.008) + '" fill="#3192a5" stroke="#fff" stroke-width="' + (stroke * 0.6) + '"/>'
+      + '<circle r="' + (W * 0.007) + '" fill="#fff"/></g>');
+  });
+  box.innerHTML = '<svg viewBox="' + minX + ' ' + minY + ' ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" style="background:#f2f6f8; border-radius:10px;">'
+    + roomParts.join("") + labelParts.join("") + wallParts.join("") + zoneParts.join("") + dockParts.join("") + '</svg>';
 }
 
 async function loadRobots(current) {

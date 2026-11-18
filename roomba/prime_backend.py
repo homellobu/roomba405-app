@@ -24,6 +24,7 @@ class PrimeBackend:
         self._p2map_id = None
         self._loop = None
         self._thread = None
+        self._map_cache = None
         self._aiohttp_session = None
         self._started = threading.Event()
 
@@ -99,6 +100,9 @@ class PrimeBackend:
             version_id = metadata.current_map_version
         if not version_id:
             return None
+        key = (p2map_id, str(version_id))
+        if self._map_cache and self._map_cache[0] == key:
+            return self._map_cache[1]
         link = await self.robot.get_map_geojson_link(p2map_id, version_id)
         url = link.get("map_url") or next(
             (v for v in link.values() if isinstance(v, str) and v.startswith("http")), None
@@ -107,33 +111,24 @@ class PrimeBackend:
             return None
         bundle = await self.robot.download_map_bundle(url)
         parsed = parse_map_bundle(bundle)
-        best = None
-        best_key = (-1, -1)
-        fallback = None
+        def keep(f):
+            geometry = (f.get("geometry") or {}).get("type")
+            if geometry not in ("Polygon", "MultiPolygon", "Point"):
+                return False
+            return "operatingModes" not in (f.get("properties") or {})
+
+        features = []
         for content in parsed.values():
-            if not (isinstance(content, dict) and isinstance(content.get("features"), list)):
-                continue
-            if fallback is None:
-                fallback = content
-            named = 0
-            polys = 0
-            for f in content["features"]:
-                if not isinstance(f, dict):
-                    continue
-                geom = (f.get("geometry") or {}).get("type")
-                if geom not in ("Polygon", "MultiPolygon"):
-                    continue
-                polys += 1
-                props = f.get("properties") or {}
-                if props.get("name") or props.get("NAME") or props.get("Name"):
-                    named += 1
-            key = (named, polys)
-            if key > best_key:
-                best = content
-                best_key = key
-        if best is not None and best_key[0] > 0:
-            return best
-        return fallback
+            if isinstance(content, dict) and isinstance(content.get("features"), list):
+                features.extend(f for f in content["features"]
+                                if isinstance(f, dict) and keep(f))
+            elif isinstance(content, dict) and keep(content):
+                features.append(content)
+        if not features:
+            return None
+        geojson = {"type": "FeatureCollection", "features": features}
+        self._map_cache = ((p2map_id, str(version_id)), geojson)
+        return geojson
 
     async def _rooms_async(self) -> list[dict]:
         from roombapy_prime.models.robot_info import parse_active_map_versions
@@ -145,16 +140,28 @@ class PrimeBackend:
         self._p2map_id = version.p2map_id
         metadata = await self.robot.get_map_metadata(version.p2map_id)
         rooms = metadata.rooms_metadata or []
+        names = {}
+        if any(not getattr(room, "name", None) for room in rooms):
+            try:
+                geojson = await self._map_async()
+            except Exception:
+                geojson = None
+            for f in (geojson or {}).get("features") or []:
+                fid = f.get("id")
+                fname = (f.get("properties") or {}).get("name")
+                if fid and fname:
+                    names[str(fid)] = fname
         result = []
         for room in rooms:
             rtype = room.region_type
             rtype_name = rtype.name if hasattr(rtype, "name") else str(rtype or "RID")
             result.append({
                 "id": str(room.room_id),
-                "name": room.name or str(room.room_id),
+                "name": room.name or names.get(str(room.room_id)) or str(room.room_id),
                 "type": rtype_name,
             })
         return result
+
 
     def clean_rooms(self, rooms: list[dict], suction: str | None = None,
                     pad_wetness: int | None = None):

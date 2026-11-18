@@ -238,3 +238,27 @@ def test_get_map_prefers_file_with_polygons():
     assert geojson["features"][0]["properties"]["name"] == "Salón"
     assert geojson["features"][0]["geometry"]["type"] == "Polygon"
     assert len(geojson["features"]) == 1
+
+def test_get_map_merges_bundle_and_skips_coverage():
+    backend = make_backend()
+    geojson = backend.get_map()
+    kinds = {(f["geometry"]["type"], f["properties"].get("name"))
+             for f in geojson["features"] if f["geometry"]}
+    assert ("Polygon", "Salón") in kinds
+    assert all("operatingModes" not in f.get("properties") or {}
+               for f in geojson["features"])
+    cached = backend.get_map()
+    assert cached is geojson
+
+
+def test_get_rooms_falls_back_to_bundle_names():
+    backend = make_backend()
+
+    async def unnamed(p2map_id):
+        return FakeMetadata(rooms_metadata=[
+            FakeRoom("room1", None, FakeRegionType("RID"))])
+
+    backend.robot.get_map_metadata = unnamed
+    rooms = backend.get_rooms()
+    assert rooms[0]["name"] == "Salón"
+    assert rooms[0]["type"] == "RID"
