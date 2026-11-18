@@ -48,7 +48,8 @@
   nav .item svg { width: 17px; height: 17px; flex-shrink: 0; }
   nav .item:hover:not(.active) { background: rgba(0, 0, 0, 0.045); }
   nav .item.active { background: var(--accent-soft); font-weight: 600; }
-  #robot-select { display: none; width: auto; margin: 0 10px 10px; font-size: 13px; }
+  #robot-select { display: none; width: calc(100% - 20px); margin: 0 10px 10px; font-size: 13px; }
+  #robot-select.show { display: block; }
   .side-footer { margin-top: auto; padding: 10px 12px 0; font-size: 11px; color: var(--dim); }
   main { flex: 1; height: 100%; overflow-y: auto; padding: 26px 30px; }
   .view { display: none; flex-direction: column; gap: 16px; max-width: 1200px; margin: 0 auto; }
@@ -478,7 +479,7 @@ async function loadRobots(current) {
       o.textContent = r.name;
       sel.appendChild(o);
     });
-    sel.style.display = items.length > 1 ? "" : "none";
+    sel.classList.toggle("show", items.length > 1);
     if (current) sel.value = current;
     sel.dataset.loaded = "1";
   } catch (e) {}
