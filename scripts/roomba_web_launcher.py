@@ -86,6 +86,40 @@ def run():
     backend = PrimeBackend(store.email, store.password, country=country, blid=blid)
 
     app = WebApp(robot_name=robot_name)
+    robots_map = session["robots"]
+    app.blid = blid
+    app.robots = lambda: [{"name": robots_map[b].get("name", "Roomba"), "blid": b}
+                          for b in robots_map]
+
+    def switch_robot(new_blid):
+        viejo = None
+        try:
+            if new_blid not in robots_map:
+                app.connect_error = "robot desconocido: " + new_blid
+                return
+            viejo = app.backend
+            app.backend = None
+            app.connect_error = None
+            nuevo_nombre = robots_map[new_blid].get("name", "Roomba")
+            app.robot_name = nuevo_nombre
+            app.blid = new_blid
+            store.set_blid(new_blid)
+            log_step(f"cambiando a robot: {nuevo_nombre} ({new_blid})")
+            nuevo = PrimeBackend(store.email, store.password, country=country, blid=new_blid)
+            nuevo.connect()
+            app.set_backend(nuevo)
+            log_step("cambio de robot completado")
+        except BaseException:
+            app.connect_error = traceback.format_exc()
+            log_step("fallo al cambiar de robot")
+        finally:
+            if viejo is not None:
+                try:
+                    viejo.close()
+                except Exception:
+                    pass
+
+    app.robot_switcher = switch_robot
     log_step(f"servidor listo en {app.url}")
 
     server_thread = threading.Thread(target=app.serve_forever, daemon=True)

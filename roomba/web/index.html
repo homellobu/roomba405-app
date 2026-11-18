@@ -48,6 +48,7 @@
   nav .item svg { width: 17px; height: 17px; flex-shrink: 0; }
   nav .item:hover:not(.active) { background: rgba(0, 0, 0, 0.045); }
   nav .item.active { background: var(--accent-soft); font-weight: 600; }
+  #robot-select { display: none; width: auto; margin: 0 10px 10px; font-size: 13px; }
   .side-footer { margin-top: auto; padding: 10px 12px 0; font-size: 11px; color: var(--dim); }
   main { flex: 1; height: 100%; overflow-y: auto; padding: 26px 30px; }
   .view { display: none; flex-direction: column; gap: 16px; max-width: 1200px; margin: 0 auto; }
@@ -146,6 +147,7 @@
       <div class="sub" id="side-robot">Conectando…</div>
     </div>
   </div>
+  <select id="robot-select" title="Cambiar de robot"></select>
   <nav id="nav">
     <div class="item active" data-view="control">
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3.8 3.5 11h2.2v8.2h4.8v-5.4h3v5.4h4.8V11h2.2z"/></svg>
@@ -403,6 +405,7 @@ async function refresh() {
     $("side-robot").textContent = data.robot || "";
     updateStatus(data.status || {});
     if (!$("map-box").dataset.loaded) loadMap();
+    if (!$("robot-select").dataset.loaded) loadRobots(data.blid);
   } catch (e) {
     setConn(false);
     $("phase").textContent = "—";
@@ -458,6 +461,24 @@ function renderMap(geojson) {
   box.innerHTML = '<svg viewBox="' + minX + ' ' + minY + ' ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg">' + parts.join("") + '</svg>';
 }
 
+async function loadRobots(current) {
+  try {
+    const data = await api("/api/robots");
+    const items = data.robots || [];
+    const sel = $("robot-select");
+    sel.innerHTML = "";
+    items.forEach(r => {
+      const o = document.createElement("option");
+      o.value = r.blid;
+      o.textContent = r.name;
+      sel.appendChild(o);
+    });
+    sel.style.display = items.length > 1 ? "" : "none";
+    if (current) sel.value = current;
+    sel.dataset.loaded = "1";
+  } catch (e) {}
+}
+
 async function loadMap() {
   try {
     const data = await api("/api/map");
@@ -493,6 +514,21 @@ document.querySelectorAll(".btn[data-cmd]").forEach(btn => {
 });
 
 $("btn-load-map").addEventListener("click", loadMap);
+
+$("robot-select").addEventListener("change", async () => {
+  const sel = $("robot-select");
+  try {
+    await api("/api/robot", {blid: sel.value});
+    delete $("map-box").dataset.loaded;
+    setConn(false);
+    $("conn-text").textContent = "Conectando con el robot\u2026";
+    log("\u2192 Cambiando de robot\u2026");
+  } catch (e) {
+    log("\u2717 No se pudo cambiar de robot: " + e.message);
+    delete sel.dataset.loaded;
+  }
+  refresh();
+});
 
 $("btn-load-rooms").addEventListener("click", async () => {
   try {

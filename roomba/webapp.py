@@ -16,6 +16,9 @@ class WebApp:
         self.backend = backend
         self.connect_error: str | None = None
         self.robot_name = robot_name
+        self.blid: str | None = None
+        self.robots = None
+        self.robot_switcher = None
         handler = type("Handler", (_Handler,), {"app": self})
         self._server = ThreadingHTTPServer((host, port), handler)
         host_bound, port_bound = self._server.server_address[:2]
@@ -71,7 +74,7 @@ class _Handler(BaseHTTPRequestHandler):
 
     def _no_backend(self, connecting: bool):
         if connecting:
-            self._json(200, {"ok": True, "connecting": True,
+            self._json(200, {"ok": True, "connecting": True, "blid": self.app.blid,
                              "robot": self.app.robot_name, "status": {}})
         else:
             self._json(503, {"ok": False, "error": "conectando con el robot"})
@@ -104,6 +107,7 @@ class _Handler(BaseHTTPRequestHandler):
                 return
             try:
                 self._json(200, {"ok": True, "robot": self.app.robot_name,
+                                 "blid": self.app.blid,
                                  "status": self.app.backend.get_status()})
             except Exception as e:
                 self._api_error(e)
@@ -119,6 +123,14 @@ class _Handler(BaseHTTPRequestHandler):
                 return
             try:
                 self._json(200, {"ok": True, "map": self.app.backend.get_map()})
+            except Exception as e:
+                self._api_error(e)
+        elif path == "/api/robots":
+            if self.app.robots is None:
+                self._json(404, {"ok": False, "error": "selector no disponible"})
+                return
+            try:
+                self._json(200, {"ok": True, "robots": self.app.robots()})
             except Exception as e:
                 self._api_error(e)
         elif path == "/api/favorites":
@@ -147,7 +159,7 @@ class _Handler(BaseHTTPRequestHandler):
             self._json(400, {"ok": False, "error": "JSON inválido"})
             return
         try:
-            if not self._backend_ready():
+            if path != "/api/robot" and not self._backend_ready():
                 return
             if path == "/api/command":
                 self.app.backend.simple(body["cmd"])
@@ -169,6 +181,13 @@ class _Handler(BaseHTTPRequestHandler):
             elif path == "/api/dock-retry":
                 threading.Thread(target=self.app.dock_with_retries,
                                  daemon=True).start()
+                self._json(200, {"ok": True, "started": True})
+            elif path == "/api/robot":
+                if not body.get("blid") or self.app.robot_switcher is None:
+                    self._json(400, {"ok": False, "error": "cambio de robot no disponible"})
+                    return
+                threading.Thread(target=self.app.robot_switcher,
+                                 args=(body["blid"],), daemon=True).start()
                 self._json(200, {"ok": True, "started": True})
             else:
                 self._json(404, {"ok": False, "error": "no encontrado"})

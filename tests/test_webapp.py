@@ -159,13 +159,56 @@ def test_rooms_favorites_schedules(server):
     assert backend.sent == [("favorite", "F1")]
 
 
+def test_robots_endpoint(server):
+    _, url = server
+    with pytest.raises(urllib.error.HTTPError) as exc:
+        get(url + "api/robots")
+    assert exc.value.code == 404
+
+
+def test_robot_switch_endpoint():
+    app = WebApp(robot_name="Test")
+    thread = __import__("threading").Thread(target=app.serve_forever, daemon=True)
+    thread.start()
+    done = __import__("threading").Event()
+    chosen = []
+
+    def switcher(blid):
+        chosen.append(blid)
+        app.blid = blid
+        app.robot_name = "Dos"
+        app.set_backend(FakeBackend())
+        done.set()
+
+    app.robot_switcher = switcher
+
+    try:
+        data = post(app.url + "api/robot", {"blid": "B"})
+        assert data == {"ok": True, "started": True}
+        assert done.wait(5)
+        assert chosen == ["B"]
+        st = get(app.url + "api/status")
+        assert st["robot"] == "Dos" and st["blid"] == "B"
+        app.robot_switcher = None
+        with pytest.raises(urllib.error.HTTPError) as exc:
+            post(app.url + "api/robot", {"blid": "B"})
+        assert exc.value.code == 400
+        app.robots = lambda: [{"name": "Uno", "blid": "A"},
+                              {"name": "Dos", "blid": "B"}]
+        robots = get(app.url + "api/robots")
+        assert [r["blid"] for r in robots["robots"]] == ["A", "B"]
+    finally:
+        app.shutdown()
+
+
 def test_connecting_state():
     app = WebApp(robot_name="Test")
     thread = __import__("threading").Thread(target=app.serve_forever, daemon=True)
     thread.start()
     try:
         data = get(app.url + "api/status")
-        assert data == {"ok": True, "connecting": True, "robot": "Test", "status": {}}
+        assert data == {"ok": True, "connecting": True, "robot": "Test",
+                        "blid": None, "status": {}}
         with pytest.raises(urllib.error.HTTPError):
             post(app.url + "api/command", {"cmd": "pause"})
         backend = FakeBackend()
