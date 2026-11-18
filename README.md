@@ -157,6 +157,27 @@ bash scripts/install_service.sh
 - Con el servicio activo puedes seguir usando Roomba.app en el Mac como
   siempre.
 
+## Controlar el robot fuera de casa
+
+El iPad necesita llegar al servicio del Mac; cuando no estás en casa se hace
+con una VPN privada (Tailscale, capa gratuita y sin abrir puertos del router:
+
+1. En el Mac: instala Tailscale (App Store o tailscale.com) e inicia sesión.
+2. En el iPad: instala Tailscale e inicia sesión con la MISMA cuenta.
+3. En el iPad, activa la VPN de Tailscale (primera vez: la app te lo pide).
+4. Usa la app de Roomba igual que en casa; si la dirección de casa ya no
+   responde, prueba con la IP de Tailscale del Mac (en la app de Tailscale
+   del Mac: "My devices" → IP 100.x.y.z) → `http://100.x.y.z:8787`.
+
+Requisitos y notas:
+- El Mac de casa debe estar encendido y despierto con el servicio instalado
+  (`scripts/install_service.sh`), y el acceso "iPhone y iPad" activado (el
+  servicio headless lo activa solo).
+- El servicio escucha en toda la red local del Mac, así que responde también
+  a su IP de Tailscale (no hace falta ningún ajuste extra).
+- Alternativa sin Mac encendido: un servidor (VPS) con el mismo código
+  corriendo 24/7; implica dejar tus cuentas de iRobot en un servidor externo.
+
 ## Diagnóstico de problemas
 
 Si el robot no responde o algo falla, ejecuta con `--debug` para ver en qué
