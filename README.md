@@ -25,6 +25,37 @@ El estado (batería, fase de limpieza, errores, posición, Wi-Fi…) se lee del
 device shadow de AWS. El token MQTT caduca en ~5 minutos; la app lo renueva
 automáticamente cada 4 minutos.
 
+### Volver a la base con reintentos
+
+Si a veces el robot no encuentra la base al terminar de limpiar, la GUI y el
+comando `dock` tienen un modo con reintentos: se envía el comando de regreso y
+se comprueba el estado real del robot; si no entra en fase de regreso o carga,
+se reintenta hasta 3 veces.
+
+En la GUI usa el botón **"Volver a la base (con reintentos)"**. Si agota los
+reintentos, el robot probablemente esté demasiado lejos o desorientado:
+acércalo a la base y vuelve a pulsarlo.
+
+## Funciones
+
+La app usa como motor la librería [roombapy-prime](https://github.com/johnnyh1975/roombapy-prime)
+(protocolo V4/Prime verificado en hardware real, incluida la serie G18 a la
+que pertenece el 405 Combo).
+
+| Función | Estado |
+|---|---|
+| Estado en vivo (batería, fase, errores) | ✅ |
+| Comandos básicos (limpiar, pausa, parar, base, localizar) | ✅ confirmado en hardware |
+| Volver a la base con reintentos | ✅ |
+| Limpiar habitaciones concretas (del mapa) | ✅ confirmado en hardware |
+| Potencia de succión (baja/media/alta/turbo) | ⚠️ forma confirmada; efecto real sin verificar por la comunidad |
+| Fregado (wetness del pad) | ⚠️ forma confirmada; efecto real sin verificar |
+| Base AutoWash: evacuar, lavar pad, secar pad, rellenar agua | ⚠️ comandos existentes en el protocolo; sin verificar en todos los modelos |
+| Rutinas/favoritos: listar e iniciar | ✅ (crear/editar se hace en la app de iRobot) |
+| Programaciones: listar | ✅ (crear/editar se hace en la app de iRobot) |
+| Mapa visual | ❌ pendiente (la librería soporta descargar el mapa; falta renderizarlo) |
+| Elegir entre varios robots | ✅ selector gráfico, elección recordada |
+
 ## Instalación
 
 Requiere Python 3.10+.
@@ -38,6 +69,12 @@ pip install -e ".[dev]"
 
 ## Uso
 
+Interfaz gráfica (Tkinter, incluida en Python):
+
+```bash
+roomba --gui
+```
+
 Menú interactivo:
 
 ```bash
@@ -50,6 +87,7 @@ Comandos directos:
 roomba start          # inicia la limpieza
 roomba dock           # vuelve a la base
 roomba --status       # muestra el estado del robot y sale
+roomba --gui          # interfaz gráfica
 roomba start --watch  # envía el comando y muestra el estado después
 roomba --logout       # borra credenciales guardadas
 ```
@@ -57,7 +95,9 @@ roomba --logout       # borra credenciales guardadas
 Opciones:
 
 - `--country XX` — código de país para el descubrimiento (por defecto `ES`).
-- `--blid BLID` — selecciona el robot si tienes varios en la cuenta.
+- `--blid BLID` — selecciona el robot si tienes varios en la cuenta. La
+  elección se recuerda: en la GUI con varios robots se muestra un selector la
+  primera vez, y para cambiar después usa `roomba --blid BLID --status`.
 
 ## Credenciales
 
@@ -74,6 +114,98 @@ pytest
 
 Los tests no necesitan un robot real: cubren el renderizado de estado, el
 almacén de credenciales y la cadena de login con respuestas simuladas.
+
+## App con doble clic en macOS
+
+Para tener la interfaz como una aplicación más del Mac:
+
+```bash
+bash scripts/make_mac_app.sh
+```
+
+Esto crea `Roomba.app` dentro de la carpeta del proyecto. Muévela a
+Aplicaciones si quieres (`mv Roomba.app /Applications/`) y ábrela con doble
+clic. La primera vez, si macOS muestra el aviso de "desarrollador no
+verificado", haz clic derecho sobre la app > **Abrir** > **Abrir**.
+
+La app abre una ventana propia (interfaz web moderna, misma estética que el
+diseño de referencia) servida solo en tu máquina (`127.0.0.1`); si falta
+`pywebview`, abre el navegador como alternativa.
+
+La app usa el mismo entorno virtual del proyecto, así que actualiza con
+`git pull` y vuelve a ejecutar el script si cambias de versión.
+
+## Uso desde iPhone o iPad
+
+En la barra lateral de la app hay un interruptor **"iPhone y iPad"**: al
+activarlo aparece una dirección del tipo `http://192.168.x.x:8787`. Abre esa
+dirección en Safari del iPad (misma WiFi) y, si quieres que funcione como
+app, comparte → **Añadir a pantalla de inicio**.
+
+Para que el iPad funcione **sin tener que abrir nada en el Mac**, instala el
+servicio de fondo:
+
+```bash
+bash scripts/install_service.sh
+```
+
+- Arranca solo al encender el Mac y se reinicia solo si se cae.
+- Log del servicio: `~/.roomba_app/service.log`; para quitarlo:
+  `bash scripts/install_service.sh --uninstall`.
+- Requiere sesión iniciada en el Mac (lo normal en un Mac Mini doméstico) y
+  un robot ya guardado (abre la app de escritorio una vez y elige robot).
+- Con el servicio activo puedes seguir usando Roomba.app en el Mac como
+  siempre.
+
+## Controlar el robot fuera de casa
+
+El iPad necesita llegar al servicio del Mac; cuando no estás en casa se hace
+con una VPN privada (Tailscale, capa gratuita y sin abrir puertos del router:
+
+1. En el Mac: instala Tailscale (App Store o tailscale.com) e inicia sesión.
+2. En el iPad: instala Tailscale e inicia sesión con la MISMA cuenta.
+3. En el iPad, activa la VPN de Tailscale (primera vez: la app te lo pide).
+4. Usa la app de Roomba igual que en casa; si la dirección de casa ya no
+   responde, prueba con la IP de Tailscale del Mac (en la app de Tailscale
+   del Mac: "My devices" → IP 100.x.y.z) → `http://100.x.y.z:8787`.
+
+Requisitos y notas:
+- El Mac de casa debe estar encendido y despierto con el servicio instalado
+  (`scripts/install_service.sh`), y el acceso "iPhone y iPad" activado (el
+  servicio headless lo activa solo).
+- El servicio escucha en toda la red local del Mac, así que responde también
+  a su IP de Tailscale (no hace falta ningún ajuste extra).
+- Alternativa sin Mac encendido: un servidor (VPS) con el mismo código
+  corriendo 24/7; implica dejar tus cuentas de iRobot en un servidor externo.
+
+## Diagnóstico de problemas
+
+Si el robot no responde o algo falla, ejecuta con `--debug` para ver en qué
+paso se detiene:
+
+```bash
+roomba --debug --status
+```
+
+Comprobaciones habituales:
+
+1. **¿El robot aparece como conectado en la app oficial de iRobot?** Si la app
+   oficial tampoco lo ve, el robot está sin Wi-Fi o apagado: ponlo en la base
+   y comprueba que la luz de Wi-Fi está fija.
+2. **Login fallido (Gigya)**: email o contraseña incorrectos. Prueba a
+   iniciar sesión en la app oficial. Para cambiar las credenciales guardadas:
+   `roomba --logout` y vuelve a ejecutar.
+3. **Login fallido en `/v2/login`**: el servidor de iRobot rechaza el acceso.
+   Verifica que el robot está vinculado a ESA cuenta (no a otra).
+4. **Se conecta pero no responde a los comandos**: el robot puede estar
+   dormido en la base. Envía `find` (pitido) para comprobar si recibe algo;
+   si suena, prueba `start` de nuevo.
+5. **Varios robots en la cuenta**: usa `--blid` con el identificador que
+   muestra `roomba --debug --status`.
+6. **Comandos publicados sin efecto** (y en el log aparece "usando el prefijo
+   corregido"): iRobot migra robots entre despliegues y el prefijo del topic
+   de comandos cambia. La app lo detecta leyendo `svcEndpoints.svcDeplId` del
+   estado del robot y reescribe el prefijo automáticamente.
 
 ## Limitaciones conocidas
 

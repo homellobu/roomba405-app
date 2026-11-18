@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Roomba</title>
+<link rel="icon" type="image/png" href="/icon.png">
+<link rel="apple-touch-icon" href="/icon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Roomba">
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --sidebar: #fbfbfd;
+    --card: #ffffff;
+    --text: #1d1d1f;
+    --dim: #86868b;
+    --border: rgba(0, 0, 0, 0.08);
+    --accent: #3192a5;
+    --accent-dark: #26737f;
+    --accent-soft: #dcebef;
+    --green: #34c759;
+    --red: #ff3b30;
+    --amber: #f5a623;
+    --pill: #eef2f4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  aside {
+    width: 232px; flex-shrink: 0; height: 100%;
+    background: var(--sidebar); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; padding: 18px 12px 14px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 4px 10px 18px; }
+  .brand .logo { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; }
+  .brand .logo svg { width: 30px; height: 30px; }
+  .brand .name { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; }
+  .brand .sub { font-size: 11.5px; color: var(--dim); margin-top: 1px; }
+  nav { display: flex; flex-direction: column; gap: 2px; }
+  nav .item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; border-radius: 10px; cursor: pointer;
+    font-size: 13.5px; color: var(--text); user-select: none;
+  }
+  nav .item svg { width: 17px; height: 17px; flex-shrink: 0; }
+  nav .item:hover:not(.active) { background: rgba(0, 0, 0, 0.045); }
+  nav .item.active { background: var(--accent-soft); font-weight: 600; }
+  #robot-select { display: none; width: calc(100% - 20px); margin: 0 10px 10px; font-size: 13px; }
+  #robot-select.show { display: block; }
+  .lan {
+    margin-top: auto; padding: 10px 12px;
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .lan .t { font-size: 12px; font-weight: 600; }
+  .lan .u { font-size: 10.5px; color: var(--dim); word-break: break-all; margin-top: 2px; display: none; }
+  .switch { position: relative; width: 34px; height: 20px; flex-shrink: 0; }
+  .switch input { display: none; }
+  .switch .sl {
+    position: absolute; inset: 0; border-radius: 10px;
+    background: rgba(0, 0, 0, 0.18); transition: background 0.18s; cursor: pointer;
+  }
+  .switch .sl::after {
+    content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
+    border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    transition: transform 0.18s;
+  }
+  .switch input:checked + .sl { background: var(--green); }
+  .switch input:checked + .sl::after { transform: translateX(14px); }
+  .side-footer { padding: 10px 12px 0; font-size: 11px; color: var(--dim); }
+  main { flex: 1; height: 100%; overflow-y: auto; padding: 26px 30px; }
+  .view { display: none; flex-direction: column; gap: 16px; max-width: 1200px; margin: 0 auto; }
+  .view.active { display: flex; }
+  .card {
+    background: var(--card); border-radius: 16px; padding: 18px 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 8px 22px rgba(0, 0, 0, 0.04);
+  }
+  .card .section-label {
+    font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--dim); margin-bottom: 12px;
+  }
+  h1 { font-size: 21px; font-weight: 700; letter-spacing: -0.3px; }
+  .statusrow { display: flex; align-items: center; gap: 14px; margin-top: 8px; flex-wrap: wrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); display: inline-block; }
+  .dot.ok { background: var(--green); }
+  .dot.bad { background: var(--red); }
+  .statusrow .st { font-size: 13px; color: var(--dim); }
+  .statusrow .st b { color: var(--text); font-weight: 600; }
+  .battery { display: flex; align-items: center; gap: 9px; }
+  .batbar {
+    width: 120px; height: 7px; border-radius: 99px; background: #e7e9ec; overflow: hidden;
+  }
+  .batbar > div { height: 100%; border-radius: 99px; background: var(--green); width: 0%; transition: width .4s; }
+  .batbar > div.warn { background: var(--amber); }
+  .batbar > div.bad { background: var(--red); }
+  .battery .pct { font-size: 13px; font-weight: 600; }
+  .grid2 { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    border-radius: 999px; cursor: pointer; font-family: inherit;
+    font-size: 13.5px; font-weight: 500; color: var(--text);
+    border: 1px solid var(--border); background: #fff;
+    padding: 9px 15px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    transition: background .12s, transform .08s, box-shadow .12s;
+  }
+  .btn:hover { background: #f2f3f5; }
+  .btn:active { transform: scale(0.98); }
+  .btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+  .btn.danger { color: var(--red); }
+  .btn.primary {
+    background: var(--accent); border-color: transparent; color: #fff;
+    font-size: 14.5px; font-weight: 600; padding: 13px 22px; width: 100%;
+    box-shadow: 0 4px 14px rgba(49, 146, 165, 0.35);
+  }
+  .btn.primary:hover { background: var(--accent-dark); }
+  .btnrow { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 12px; }
+  select {
+    appearance: none; -webkit-appearance: none; font-family: inherit;
+    font-size: 13.5px; color: var(--text); background: #fff; cursor: pointer;
+    border: 1px solid var(--border); border-radius: 9px; padding: 8px 30px 8px 11px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M1 1l4 4 4-4' stroke='%2386868b' stroke-width='1.6' fill='none' stroke-linecap='round'/></svg>");
+    background-repeat: no-repeat; background-position: right 10px center;
+  }
+  .fields { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  .fields .field { display: flex; flex-direction: column; gap: 5px; }
+  .fields label { font-size: 11.5px; color: var(--dim); font-weight: 500; }
+  #map-box {
+    background: #eef3f6; border-radius: 12px; min-height: 300px;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; padding: 10px;
+  }
+  #map-box svg { width: 100%; height: auto; display: block; }
+  #map-box .empty { color: var(--dim); font-size: 13px; text-align: center; padding: 20px; }
+  .cardhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+  .cardhead .section-label { margin-bottom: 0; }
+  ul.plain { list-style: none; }
+  ul.plain li {
+    display: flex; align-items: center; gap: 9px;
+    padding: 9px 4px; border-bottom: 1px solid rgba(0, 0, 0, 0.05); font-size: 13.5px;
+  }
+  ul.plain li:last-child { border-bottom: none; }
+  ul.plain li .kind { margin-left: auto; font-size: 11.5px; color: var(--dim); }
+  ul.plain li .empty, .empty { color: var(--dim); font-size: 13px; padding: 6px 2px; }
+  #rooms-list input, #favs-list input { accent-color: var(--accent); width: 15px; height: 15px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--dim); font-size: 11.5px; font-weight: 600; padding: 6px 4px; }
+  td { padding: 9px 4px; border-top: 1px solid rgba(0, 0, 0, 0.05); }
+  #log { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; }
+  #log .row { display: flex; gap: 10px; font-size: 12.5px; }
+  #log .t { color: var(--dim); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<aside>
+  <div class="brand">
+    <span class="logo">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" stroke="var(--accent)" stroke-width="2.2"/>
+        <circle cx="12" cy="12" r="3.2" fill="var(--accent)"/>
+      </svg>
+    </span>
+    <div>
+      <div class="name">Roomba</div>
+      <div class="sub" id="side-robot">Conectando…</div>
+    </div>
+  </div>
+  <select id="robot-select" title="Cambiar de robot"></select>
+  <nav id="nav">
+    <div class="item active" data-view="control">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3.8 3.5 11h2.2v8.2h4.8v-5.4h3v5.4h4.8V11h2.2z"/></svg>
+      Control
+    </div>
+    <div class="item" data-view="rooms">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M4 10.5 12 4.5l8 6M6 9.5V19h12V9.5"/><path d="M10 19v-4.5h4V19"/></svg>
+      Habitaciones
+    </div>
+    <div class="item" data-view="routines">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><path d="M12 7.5V12l3 2"/></svg>
+      Rutinas
+    </div>
+    <div class="item" data-view="schedules">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14" rx="2.5"/><path d="M4 10h16M8.5 3.5v3.5M15.5 3.5v3.5"/></svg>
+      Programaciones
+    </div>
+  </nav>
+  <div class="lan">
+    <div>
+      <div class="t">iPhone y iPad</div>
+      <div class="u" id="lan-url"></div>
+    </div>
+    <label class="switch">
+      <input type="checkbox" id="lan-toggle">
+      <span class="sl"></span>
+    </label>
+  </div>
+  <div class="side-footer">Roomba 405 Combo</div>
+</aside>
+
+<main>
+  <section class="view active" id="view-control">
+    <div class="card">
+      <h1 id="title">Roomba</h1>
+      <div class="statusrow">
+        <span style="display:flex;align-items:center;gap:7px;">
+          <span class="dot" id="dot"></span>
+          <span class="st" id="conn-text">Conectando…</span>
+        </span>
+        <span class="st">Estado: <b id="phase">—</b></span>
+        <span class="battery">
+          <span class="batbar"><div id="bat-fill"></div></span>
+          <span class="pct" id="bat-pct">—</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        <div class="card">
+          <div class="cardhead">
+            <div class="section-label">Limpieza</div>
+          </div>
+          <button class="btn primary" id="btn-start-all">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.4v13.2c0 .8.9 1.3 1.6.9l10.2-6.6c.6-.4.6-1.4 0-1.8L9.6 4.5c-.7-.4-1.6.1-1.6.9z"/></svg>
+            Limpiar toda la casa
+          </button>
+          <div class="btnrow">
+            <button class="btn" id="btn-pause" title="Pausar">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6.6" y="5" width="3.8" height="14" rx="1.5"/><rect x="13.6" y="5" width="3.8" height="14" rx="1.5"/></svg>
+              Pausar
+            </button>
+            <button class="btn" id="btn-resume" title="Reanudar">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.4v13.2c0 .8.9 1.3 1.6.9l10.2-6.6c.6-.4.6-1.4 0-1.8L9.6 4.5c-.7-.4-1.6.1-1.6.9z"/></svg>
+              Reanudar
+            </button>
+            <button class="btn" id="btn-dock" title="Volver a la base (con reintentos)">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3.8 3.5 11h2.2v8.2h4.8v-5.4h3v5.4h4.8V11h2.2z"/></svg>
+              Volver a la base
+            </button>
+            <button class="btn" id="btn-find" title="Localizar">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.2a6.6 6.6 0 0 0-6.6 6.6c0 4.9 6.6 13 6.6 13s6.6-8.1 6.6-13A6.6 6.6 0 0 0 12 2.2z"/><circle cx="12" cy="8.8" r="2.3" fill="#fff"/></svg>
+              Localizar
+            </button>
+            <button class="btn danger" id="btn-stop" title="Detener">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6.3" y="6.3" width="11.4" height="11.4" rx="2.6"/></svg>
+              Detener
+            </button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-label">Mantenimiento</div>
+          <div class="btnrow" style="margin-top:0;">
+            <button class="btn" data-cmd="evac">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M5 7h14M9.5 7V5h5v2M7 7l1 13h8l1-13M10.5 10.5v6M13.5 10.5v6"/></svg>
+              Vaciar depósito
+            </button>
+            <button class="btn" data-cmd="washpad">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M12 3.5s6 6.2 6 10.2a6 6 0 0 1-12 0c0-4 6-10.2 6-10.2z"/></svg>
+              Lavar pad
+            </button>
+            <button class="btn" data-cmd="drypad">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M8 4.5c0 2-2.5 3-2.5 5.5M13 4.5c0 2-2.5 3-2.5 5.5M18 4.5c0 2-2.5 3-2.5 5.5M6 13h12l-1.2 6.5H7.2z"/></svg>
+              Secar pad
+            </button>
+            <button class="btn" data-cmd="flrefill">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M12 3.5 5.5 11h13z"/><path d="M8.5 14.5h7M12 11v9"/></svg>
+              Rellenar agua
+            </button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-label">Registro de actividad</div>
+          <div id="log"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="cardhead">
+          <div class="section-label">Mapa de la casa</div>
+          <button class="btn" id="btn-load-map" style="padding:6px 12px; font-size:12.5px;">↻ Actualizar</button>
+        </div>
+        <div id="map-box"><div class="empty">Pulsa «Actualizar» para cargar el mapa.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="view-rooms">
+    <div class="card">
+      <div class="section-label">Habitaciones</div>
+      <div class="fields">
+        <div class="field">
+          <label>Succión</label>
+          <select id="suction">
+            <option value="">Por defecto</option>
+            <option value="low">Baja</option>
+            <option value="medium">Media</option>
+            <option value="high">Alta</option>
+            <option value="turbo">Turbo</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Fregado</label>
+          <select id="pad">
+            <option value="">Por defecto</option>
+            <option value="1">Bajo</option>
+            <option value="2">Medio</option>
+            <option value="3">Alto</option>
+          </select>
+        </div>
+      </div>
+      <div class="btnrow" style="margin-top:14px;">
+        <button class="btn" id="btn-load-rooms">↻ Cargar mapa de habitaciones</button>
+        <button class="btn primary" id="btn-clean-rooms" style="width:auto;">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.4v13.2c0 .8.9 1.3 1.6.9l10.2-6.6c.6-.4.6-1.4 0-1.8L9.6 4.5c-.7-.4-1.6.1-1.6.9z"/></svg>
+          Limpiar selección
+        </button>
+      </div>
+      <ul class="plain" id="rooms-list" style="margin-top:12px;">
+        <li class="empty">Carga el mapa para elegir habitaciones.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="view" id="view-routines">
+    <div class="card">
+      <div class="section-label">Rutinas</div>
+      <div class="btnrow" style="margin-top:0;">
+        <button class="btn" id="btn-load-favs">↻ Cargar rutinas</button>
+        <button class="btn primary" id="btn-start-fav" style="width:auto;">Iniciar seleccionada</button>
+      </div>
+      <ul class="plain" id="favs-list" style="margin-top:12px;">
+        <li class="empty">Carga las rutinas guardadas en la app de iRobot.</li>
+      </ul>
+    </div>
+  </section>
+  <section class="view" id="view-schedules">
+    <div class="card">
+      <div class="section-label">Programaciones</div>
+      <div class="btnrow" style="margin-top:0;">
+        <button class="btn" id="btn-load-scheds">↻ Cargar programaciones</button>
+      </div>
+      <table style="margin-top:12px;">
+        <thead><tr><th>Nombre</th><th>Hora</th><th>Días</th><th>Activa</th></tr></thead>
+        <tbody id="scheds-body"><tr><td colspan="4" class="empty">Carga las programaciones de tu cuenta.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const PHASES = {
+  "charge": "Cargando", "run": "Limpiando", "stop": "En reposo", "pause": "En pausa",
+  "hmUsrDock": "Volviendo a la base", "hmMidMsn": "Volviendo (media misión)",
+  "hmPostMsn": "Volviendo (fin de misión)", "evac": "Vaciando depósito",
+  "chargingerror": "Error de carga",
+};
+let rooms = [];
+let favorites = [];
+let mapGeojson = null;
+let trailPts = [];
+let lastTrailLen = -1;
+let lastTrailError = null;
+
+function noteTrailError(error) {
+  if (error && error !== lastTrailError) {
+    lastTrailError = error;
+    log("\u2717 Recorrido en vivo no disponible: " + error);
+  } else if (!error && lastTrailError) {
+    lastTrailError = null;
+  }
+}
+function updateLan(lan) {
+  if (!lan) return;
+  $("lan-toggle").checked = !!lan.enabled;
+  const box = $("lan-url");
+  if (lan.enabled && lan.url) {
+    if (box.textContent !== lan.url) box.textContent = lan.url;
+    box.style.display = "block";
+  } else {
+    box.style.display = "none";
+  }
+}
+let wasConnecting = null;
+
+function log(msg) {
+  const box = $("log");
+  const row = document.createElement("div");
+  row.className = "row";
+  const t = document.createElement("span");
+  t.className = "t";
+  t.textContent = new Date().toTimeString().slice(0, 5);
+  const m = document.createElement("span");
+  m.textContent = msg;
+  row.appendChild(t);
+  row.appendChild(m);
+  box.prepend(row);
+}
+
+async function api(path, body) {
+  const opts = body ? {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)} : {};
+  const res = await fetch(path, opts);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.ok === false) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+async function command(path, body, done) {
+  try {
+    await api(path, body);
+    log(done);
+  } catch (e) { log("✗ " + e.message); }
+}
+
+let lastPhase = null;
+function updateStatus(st) {
+  const m = st.cleanMissionStatus || {};
+  setConn(true);
+  if (m.error) {
+    $("phase").textContent = PHASES[m.phase] || "Error";
+  } else if (m.phase) {
+    $("phase").textContent = PHASES[m.phase] || m.phase;
+  } else {
+    $("phase").textContent = "—";
+  }
+  const bat = st.batPct;
+  const fill = $("bat-fill");
+  if (bat !== undefined && bat !== null) {
+    const pct = Math.max(0, Math.min(100, bat));
+    fill.style.width = pct + "%";
+    fill.className = pct >= 30 ? "" : pct >= 15 ? "warn" : "bad";
+    $("bat-pct").textContent = pct + "%";
+  } else {
+    fill.style.width = "0%";
+    $("bat-pct").textContent = "—";
+  }
+  if ($("phase").textContent !== lastPhase) {
+    lastPhase = $("phase").textContent;
+    log("Estado: " + lastPhase + (bat !== undefined && bat !== null ? " · batería " + bat + "%" : ""));
+  }
+}
+
+function setConn(ok) {
+  $("dot").className = "dot " + (ok ? "ok" : "bad");
+  $("conn-text").textContent = ok ? "En línea" : "Sin conexión";
+}
+
+async function refresh() {
+  try {
+    const data = await api("/api/status");
+    if (data.connecting) {
+      wasConnecting = true;
+      setConn(false);
+      $("conn-text").textContent = "Conectando con el robot…";
+    } else {
+      if (wasConnecting) {
+        wasConnecting = false;
+        delete $("map-box").dataset.loaded;
+        loadMap();
+        loadRooms();
+      }
+      $("side-robot").textContent = data.robot || "";
+      updateStatus(data.status || {});
+      if (data.trail) noteTrailError(data.trail.error);
+      if (data.lan) updateLan(data.lan);
+    }
+    if (!$("robot-select").dataset.loaded) {
+      await loadRobots(data.blid);
+      if (!$("robot-select").dataset.loaded) {
+        log("✗ Selector de robots no disponible: reinicia la aplicación para actualizar");
+      }
+    }
+  } catch (e) {
+    wasConnecting = true;
+    setConn(false);
+    $("phase").textContent = "—";
+  }
+}
+
+function renderMap(geojson) {
+  if (geojson) mapGeojson = geojson;
+  const box = $("map-box");
+  if (!geojson || !Array.isArray(geojson.features)) {
+    box.innerHTML = '<div class="empty">Sin mapa disponible todav\u00eda.<br>Deja que el robot limpie o mapee una vez.</div>';
+    return;
+  }
+  const rooms = [], walls = [], wallLines = [], zones = [], docks = [];
+  geojson.features.forEach(f => {
+    const g = f.geometry || {};
+    const props = f.properties || {};
+    if (g.type === "Point") {
+      docks.push({pt: g.coordinates, props});
+      return;
+    }
+    let rings = null;
+    if (props.simplifiedGeometry && props.simplifiedGeometry.type === "Polygon") {
+      rings = props.simplifiedGeometry.coordinates;
+    } else if (g.type === "Polygon") rings = g.coordinates;
+    else if (g.type === "MultiPolygon") rings = g.coordinates.flat();
+    if (!rings) {
+      if (g.type === "LineString") wallLines.push(g.coordinates);
+      else if (g.type === "MultiLineString") wallLines.push(...g.coordinates);
+      return;
+    }
+    const usable = rings.filter(r => r && r.length >= 3);
+    if (!usable.length) return;
+    const name = props.name || props.NAME || props.Name;
+    const item = {rings: usable, name};
+    if (props.type === "KeepOutZone") zones.push(item);
+    else if (name) rooms.push(item);
+    else walls.push(item);
+  });
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  function track(x, y) {
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+  const flip = (pt) => [pt[0], -pt[1]];
+  rooms.concat(walls, zones).forEach(it => it.rings.forEach(points => points.forEach(pt => {
+    const p = flip(pt); track(p[0], p[1]);
+  })));
+  wallLines.forEach(points => points.forEach(pt => { const p = flip(pt); track(p[0], p[1]); }));
+  docks.forEach(d => { const p = flip(d.pt); track(p[0], p[1]); });
+  if ((!rooms.length && !walls.length && !wallLines.length) || !isFinite(minX)) {
+    box.innerHTML = '<div class="empty">El mapa a\u00fan no tiene habitaciones dibujadas.</div>';
+    return;
+  }
+  const pad = (Math.max(maxX - minX, maxY - minY) || 1) * 0.08;
+  minX -= pad; maxX += pad; minY -= pad; maxY += pad;
+  const W = maxX - minX, H = maxY - minY;
+  const stroke = Math.max(W, H) * 0.0025;
+  const pathOf = (points) => points.map((pt, i) => {
+    const p = flip(pt);
+    return (i ? "L" : "M") + p[0].toFixed(3) + " " + p[1].toFixed(3);
+  }).join(" ") + " Z";
+  const segDist = (x, y, a, b) => {
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    const len2 = dx * dx + dy * dy || 1e-12;
+    let t = ((x - a[0]) * dx + (y - a[1]) * dy) / len2;
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    return Math.hypot(x - (a[0] + t * dx), y - (a[1] + t * dy));
+  };
+  const inRing = (x, y, ring) => {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const a = flip(ring[i]), b = flip(ring[j]);
+      if ((a[1] > y) !== (b[1] > y) &&
+          x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside;
+    }
+    return inside;
+  };
+  const visualCenter = (rings) => {
+    const outer = rings[0].map(flip);
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    outer.forEach(p => {
+      x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]);
+      x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]);
+    });
+    if (!isFinite(x0)) return [(x0 + x1) / 2, (y0 + y1) / 2];
+    const holes = rings.slice(1).map(h => h.map(flip));
+    const N = 28;
+    let best = [(x0 + x1) / 2, (y0 + y1) / 2], bestD = -1;
+    for (let i = 1; i < N; i++) {
+      for (let k = 1; k < N; k++) {
+        const x = x0 + (x1 - x0) * i / N;
+        const y = y0 + (y1 - y0) * k / N;
+        if (!inRing(x, y, outer)) continue;
+        if (holes.some(h => inRing(x, y, h))) continue;
+        let d = Infinity;
+        for (let vi = 0; vi < outer.length; vi++)
+          d = Math.min(d, segDist(x, y, outer[vi], outer[(vi + 1) % outer.length]));
+        for (const h of holes)
+          for (let vi = 0; vi < h.length; vi++)
+            d = Math.min(d, segDist(x, y, h[vi], h[(vi + 1) % h.length]));
+        if (d > bestD) { bestD = d; best = [x, y]; }
+      }
+    }
+    return best;
+  };
+  const roomParts = [], wallParts = [], zoneParts = [], dockParts = [], labelParts = [];
+  const trailParts = [];
+  rooms.forEach(({rings, name}) => {
+    rings.forEach((points, ri) => {
+      roomParts.push('<path d="' + pathOf(points) + '" fill="#cde4f2" fill-opacity="0.9" stroke="#5f9ab3" stroke-width="' + stroke + '" stroke-linejoin="round" stroke-linecap="round"/>');
+      if (ri === 0 && name) {
+        const c = visualCenter(rings);
+        let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+        rings[0].forEach(pt0 => {
+          const p = flip(pt0);
+          bx0 = Math.min(bx0, p[0]); by0 = Math.min(by0, p[1]);
+          bx1 = Math.max(bx1, p[0]); by1 = Math.max(by1, p[1]);
+        });
+        const fs = Math.max(stroke * 3, Math.min(W * 0.045,
+          (bx1 - bx0) / (0.62 * String(name).length), (by1 - by0) * 0.8));
+        labelParts.push('<text x="' + c[0].toFixed(3) + '" y="' + c[1].toFixed(3) + '" text-anchor="middle" dominant-baseline="middle" font-size="' + fs.toFixed(3) + '" font-weight="600" fill="#33566a" font-family="inherit">' + String(name) + '</text>');
+      }
+    });
+  });
+  walls.forEach(({rings}) => {
+    rings.forEach(points => {
+      if (points.length < 3) return;
+      wallParts.push('<path d="' + pathOf(points) + '" fill="#9ec2d4" fill-opacity="0.85" stroke="none" stroke-linejoin="round"/>');
+    });
+  });
+  wallLines.forEach(points => {
+    if (!points || points.length < 2) return;
+    const d = points.map((pt, i) => {
+      const p = flip(pt);
+      return (i ? "L" : "M") + p[0].toFixed(3) + " " + p[1].toFixed(3);
+    }).join(" ");
+    wallParts.push('<path d="' + d + '" fill="none" stroke="#7fb3cc" stroke-width="' + stroke + '" stroke-linecap="round"/>');
+  });
+  zones.forEach(({rings}) => {
+    rings.forEach(points => {
+      zoneParts.push('<path d="' + pathOf(points) + '" fill="#f6ddd1" fill-opacity="0.55" stroke="#df8663" stroke-width="' + stroke + '" stroke-dasharray="' + (stroke * 2.5) + ' ' + (stroke * 1.5) + '"/>');
+    });
+  });
+  if (trailPts.length) {
+    const d = trailPts.map((pt, i) => {
+      const p = flip(pt);
+      return (i ? "L" : "M") + p[0].toFixed(3) + " " + p[1].toFixed(3);
+    }).join(" ");
+    trailParts.push('<path d="' + d + '" fill="none" stroke="#d87e5f" stroke-opacity="0.8" stroke-width="' + (stroke * 0.9) + '" stroke-linecap="round" stroke-linejoin="round"/>');
+    const last = flip(trailPts[trailPts.length - 1]);
+    trailParts.push('<circle cx="' + last[0].toFixed(3) + '" cy="' + last[1].toFixed(3) + '" r="' + (Math.max(W, H) * 0.016) + '" fill="#1d1d1f" stroke="#3192a5" stroke-width="' + (stroke * 1.4) + '"/>');
+  }
+  docks.forEach(({pt}) => {
+    const p = flip(pt);
+    dockParts.push('<g transform="translate(' + p[0].toFixed(3) + ' ' + p[1].toFixed(3) + ')">'
+      + '<rect x="' + (-W * 0.022) + '" y="' + (-W * 0.016) + '" width="' + (W * 0.044) + '" height="' + (W * 0.032) + '" rx="' + (W * 0.008) + '" fill="#3192a5" stroke="#fff" stroke-width="' + (stroke * 0.6) + '"/>'
+      + '<circle r="' + (W * 0.007) + '" fill="#fff"/></g>');
+  });
+  box.innerHTML = '<svg viewBox="' + minX + ' ' + minY + ' ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" style="background:#f2f6f8; border-radius:10px;">'
+    + wallParts.join("") + roomParts.join("") + labelParts.join("") + zoneParts.join("") + trailParts.join("") + dockParts.join("") + '</svg>';
+}
+
+async function loadRobots(current) {
+  try {
+    const data = await api("/api/robots");
+    const items = data.robots || [];
+    const sel = $("robot-select");
+    sel.innerHTML = "";
+    items.forEach(r => {
+      const o = document.createElement("option");
+      o.value = r.blid;
+      o.textContent = r.name;
+      sel.appendChild(o);
+    });
+    sel.classList.toggle("show", items.length > 1);
+    if (current) sel.value = current;
+    sel.dataset.loaded = "1";
+  } catch (e) {}
+}
+
+async function loadMap() {
+  try {
+    const data = await api("/api/map");
+    renderMap(data.map);
+    log(data.map ? "✓ Mapa actualizado" : "Sin mapa: el robot aún no lo ha generado");
+  } catch (e) {
+    log("✗ Mapa no disponible: " + e.message);
+    renderMap(null);
+  } finally {
+    $("map-box").dataset.loaded = "1";
+  }
+}
+
+document.querySelectorAll("#nav .item").forEach(item => {
+  item.addEventListener("click", () => {
+    document.querySelectorAll("#nav .item").forEach(i => i.classList.remove("active"));
+    item.classList.add("active");
+    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+    $("view-" + item.dataset.view).classList.add("active");
+    if (item.dataset.view === "control" && !$("map-box").dataset.loaded) loadMap();
+  });
+});
+
+$("btn-start-all").addEventListener("click", () => command("/api/command", {cmd: "start"}, "✓ Enviado: limpiar toda la casa"));
+$("btn-pause").addEventListener("click", () => command("/api/command", {cmd: "pause"}, "✓ Enviado: Pausar"));
+$("btn-resume").addEventListener("click", () => command("/api/command", {cmd: "resume"}, "✓ Enviado: Reanudar"));
+$("btn-stop").addEventListener("click", () => command("/api/command", {cmd: "stop"}, "✓ Enviado: Detener"));
+$("btn-dock").addEventListener("click", () => command("/api/dock-retry", {}, "→ Reintentos de vuelta a base en marcha"));
+$("btn-find").addEventListener("click", () => command("/api/command", {cmd: "find"}, "✓ Enviado: Localizar"));
+
+document.querySelectorAll(".btn[data-cmd]").forEach(btn => {
+  btn.addEventListener("click", () => command("/api/dock-command", {cmd: btn.dataset.cmd}, "✓ Enviado: " + btn.textContent.trim()));
+});
+
+$("btn-load-map").addEventListener("click", loadMap);
+
+$("robot-select").addEventListener("change", async () => {
+  const sel = $("robot-select");
+  try {
+    await api("/api/robot", {blid: sel.value});
+    delete $("map-box").dataset.loaded;
+    setConn(false);
+    $("conn-text").textContent = "Conectando con el robot\u2026";
+    log("\u2192 Cambiando de robot\u2026");
+  } catch (e) {
+    log("\u2717 No se pudo cambiar de robot: " + e.message);
+    delete sel.dataset.loaded;
+  }
+  refresh();
+});
+
+async function loadRooms() {
+  try {
+    const data = await api("/api/rooms");
+    rooms = data.rooms || [];
+    const ul = $("rooms-list");
+    ul.innerHTML = "";
+    if (!rooms.length) {
+      ul.innerHTML = '<li class="empty">Sin mapa activo: deja que el robot mapee la casa primero.</li>';
+      return;
+    }
+    rooms.forEach((r, i) => {
+      const li = document.createElement("li");
+      li.innerHTML = '<input type="checkbox" data-i="' + i + '"> ' + r.name +
+        '<span class="kind">' + (r.type === "RID" ? "habitación" : "zona") + '</span>';
+      ul.appendChild(li);
+    });
+    log("✓ Habitaciones cargadas: " + rooms.length);
+  } catch (e) { log("✗ No se pudieron cargar habitaciones: " + e.message); }
+}
+
+$("btn-load-rooms").addEventListener("click", loadRooms);
+
+$("btn-clean-rooms").addEventListener("click", async () => {
+  const chosen = [...document.querySelectorAll("#rooms-list input:checked")].map(cb => rooms[cb.dataset.i].name);
+  if (!chosen.length) { log("⚠ Selecciona al menos una habitación"); return; }
+  const suction = $("suction").value || null;
+  const pad = $("pad").value ? parseInt($("pad").value) : null;
+  log("→ Limpiar: " + chosen.join(", "));
+  try {
+    await api("/api/clean", {rooms: chosen, suction, pad});
+    log("✓ Comando enviado");
+  } catch (e) { log("✗ Fallo al enviar: " + e.message); }
+});
+
+$("btn-load-favs").addEventListener("click", async () => {
+  try {
+    const data = await api("/api/favorites");
+    favorites = data.favorites || [];
+    const ul = $("favs-list");
+    ul.innerHTML = "";
+    if (!favorites.length) {
+      ul.innerHTML = '<li class="empty">No hay rutinas guardadas (créalas en la app de iRobot).</li>';
+      return;
+    }
+    favorites.forEach((f, i) => {
+      const li = document.createElement("li");
+      li.innerHTML = '<input type="radio" name="fav" data-i="' + i + '"> ' + f.name +
+        '<span class="kind">' + (f.steps ? f.steps + " paso(s)" : "vacía") + '</span>';
+      ul.appendChild(li);
+    });
+    log("✓ " + favorites.length + " rutina(s) cargadas");
+  } catch (e) { log("✗ No se pudieron cargar rutinas: " + e.message); }
+});
+
+$("btn-start-fav").addEventListener("click", async () => {
+  const cb = document.querySelector("#favs-list input:checked");
+  if (!cb) { log("⚠ Selecciona una rutina"); return; }
+  const fav = favorites[cb.dataset.i];
+  try {
+    await api("/api/favorite", {id: fav.id});
+    log("✓ Rutina iniciada: " + fav.name);
+  } catch (e) { log("✗ " + e.message); }
+});
+
+$("btn-load-scheds").addEventListener("click", async () => {
+  try {
+    const data = await api("/api/schedules");
+    const rows = data.schedules || [];
+    const tb = $("scheds-body");
+    tb.innerHTML = "";
+    if (!rows.length) {
+      tb.innerHTML = '<tr><td colspan="4" class="empty">No hay programaciones en tu cuenta.</td></tr>';
+      return;
+    }
+    rows.forEach(sch => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = '<td>' + sch.name + '</td><td>' + sch.time + '</td><td>' + sch.days + '</td><td>' + (sch.enabled ? "Sí" : "No") + '</td>';
+      tb.appendChild(tr);
+    });
+    log("✓ " + rows.length + " programación(es) cargadas");
+  } catch (e) { log("✗ No se pudieron cargar programaciones: " + e.message); }
+});
+
+async function trailTick() {
+  try {
+    const d = await api("/api/trail");
+    if (d.trail && d.trail.length && d.trail.length !== lastTrailLen) {
+      trailPts = d.trail;
+      lastTrailLen = d.trail.length;
+      if (mapGeojson) renderMap(mapGeojson);
+    }
+    noteTrailError(d.error);
+  } catch (e) {}
+}
+
+$("lan-toggle").addEventListener("change", async (ev) => {
+  const enabled = ev.target.checked;
+  try {
+    const d = await api("/api/lan", {enabled});
+    updateLan(d);
+    log(enabled ? "\u2713 Acceso para iPhone/iPad activado: " + d.url
+               : "Acceso para iPhone/iPad desactivado");
+    if (enabled) log("En el iPad abre esa direcci\u00f3n en Safari y usa Compartir > A\u00f1adir a pantalla de inicio");
+  } catch (e) {
+    ev.target.checked = !enabled;
+    log("\u2717 Acceso desde iPhone/iPad: " + e.message);
+  }
+});
+
+refresh();
+setInterval(refresh, 8000);
+setInterval(trailTick, 2000);
+</script>
+</body>
+</html>

@@ -1,4 +1,6 @@
 import json
+import logging
+import re
 import threading
 import time
 
@@ -8,11 +10,15 @@ from awsiot import mqtt_connection_builder
 from .cloud import IRobotCloud
 from .store import Store
 
+log = logging.getLogger(__name__)
+
 TOKEN_HEADER = "x-irobot-auth"
 REFRESH_EVERY = 240
 
 SHADOW_GET = "$aws/things/{blid}/shadow/get"
 SHADOW_UPDATE = "$aws/things/{blid}/shadow/update"
+
+DOCK_PHASES = {"hmUsrDock", "hmMidMsn", "hmPostMsn", "charge", "evac"}
 
 COMMANDS = {
     "start": "Iniciar limpieza",
@@ -56,6 +62,7 @@ class Roomba:
         info = robots[chosen]
         self.blid = chosen
         self.name = info.get("name", chosen)
+        self.robot_depl_id = self._deployment_from_robot_info(info)
 
         for key in ("iot_token", "iot_signature", "iot_authorizer_name", "iot_clientid"):
             if not session.get(key):
@@ -68,6 +75,32 @@ class Roomba:
         disco = session.get("_discovery", {})
         self.endpoint = disco["mqtt"]
         self.irbt_topics = disco["irbt_topics"]
+
+    @staticmethod
+    def _deployment_from_robot_info(info: dict) -> str | None:
+        for key in ("svc_deployment_id", "svcDeplId", "svc_depl_id"):
+            if info.get(key):
+                return info[key]
+        endpoints = info.get("svcEndpoints") or {}
+        if endpoints.get("svcDeplId"):
+            return endpoints["svcDeplId"]
+        return None
+
+    def _align_topic_prefix(self):
+        state = self.snapshot()
+        endpoints = state.get("svcEndpoints") or {}
+        depl = endpoints.get("svcDeplId") or self.robot_depl_id
+        if not depl or not self.irbt_topics:
+            return
+        if self.irbt_topics.startswith(depl):
+            return
+        old_prefix = self.irbt_topics
+        self.irbt_topics = re.sub(r"^v\d+", depl, old_prefix)
+        log.warning(
+            "El robot está en el despliegue '%s' pero el descubrimiento devolvió '%s'; "
+            "usando el prefijo corregido %s (sin esto, los comandos se publican donde el robot no escucha)",
+            depl, old_prefix, self.irbt_topics,
+        )
 
     @staticmethod
     def _pick_robot(robots: dict) -> str:
@@ -119,10 +152,15 @@ class Roomba:
         )[0].result(timeout=10)
 
     def connect(self):
+        log.info("Conectando MQTT a %s con BLID %s...", self.endpoint, self.blid)
         self.conn = self._build_connection()
         self.conn.connect().result(timeout=15)
+        log.info("MQTT conectado")
         self._subscribe()
+        log.info("Suscrito a los topics de estado")
         self.refresh_state()
+        log.info("Estado inicial recibido")
+        self._align_topic_prefix()
         self._start_refresh_loop()
 
     def _start_refresh_loop(self):
@@ -156,6 +194,7 @@ class Roomba:
             self.conn = self._build_connection()
             self.conn.connect().result(timeout=15)
             self._subscribe()
+            self._align_topic_prefix()
 
     def _on_message(self, topic, payload, **_):
         try:
@@ -177,9 +216,30 @@ class Roomba:
             )
         self._fresh.wait(timeout=4)
 
+    def _wait_for_phase(self, phases: set, timeout: float):
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            self.refresh_state()
+            mission = self.snapshot().get("cleanMissionStatus") or {}
+            phase = mission.get("phase")
+            if phase in phases:
+                return phase
+            time.sleep(3)
+        return None
+
+    def dock_with_retry(self, attempts: int = 3, wait_per_attempt: float = 25) -> bool:
+        last_phase = None
+        for _ in range(attempts):
+            self.send("dock")
+            last_phase = self._wait_for_phase(DOCK_PHASES, wait_per_attempt)
+            if last_phase:
+                return True
+        return False
+
     def send(self, command: str):
         if command not in COMMANDS:
             raise ValueError(f"Comando desconocido: {command}")
+        log.info("Enviando comando '%s' a %s...", command, self._cmd_topic())
         payload = json.dumps({
             "command": command,
             "time": int(time.time()),
@@ -191,6 +251,7 @@ class Roomba:
                 payload=payload,
                 qos=mqtt.QoS.AT_LEAST_ONCE,
             )[0].result(timeout=5)
+        log.info("Comando '%s' publicado", command)
 
     def snapshot(self) -> dict:
         with self._lock:

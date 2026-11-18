@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 import sys
 from getpass import getpass
@@ -44,8 +45,32 @@ def login_flow(store: Store, cloud: IRobotCloud, force: bool = False) -> dict:
     return session
 
 
-def connect_robot(store: Store, cloud: IRobotCloud, blid: str | None = None) -> Roomba:
+def resolve_blid(store: Store, session: dict, prefer_blid: str | None = None):
+    robots = session.get("robots") or {}
+    if not robots:
+        raise RuntimeError("No hay robots vinculados a esta cuenta")
+    if prefer_blid:
+        if prefer_blid not in robots:
+            raise RuntimeError(f"El BLID {prefer_blid} no está en tu cuenta")
+        store.set_blid(prefer_blid)
+        return prefer_blid
+    stored = store.blid
+    if stored in robots:
+        return stored
+    if len(robots) == 1:
+        blid = next(iter(robots))
+        store.set_blid(blid)
+        return blid
+    return None
+
+
+def connect_robot(store: Store, cloud: IRobotCloud, blid: str | None = None,
+                  picker=None) -> Roomba:
     session = login_flow(store, cloud)
+    blid = resolve_blid(store, session, prefer_blid=blid)
+    if blid is None and picker:
+        blid = picker(session["robots"])
+        store.set_blid(blid)
     try:
         robot = Roomba(store, cloud, session, blid=blid)
         robot.connect()
@@ -115,10 +140,16 @@ def main():
                         help="Código de país para el descubrimiento (por defecto ES)")
     parser.add_argument("--blid", default=None, help="BLID del robot si tienes varios")
     parser.add_argument("--status", action="store_true", help="Muestra el estado y sale")
+    parser.add_argument("--gui", action="store_true", help="Abre la interfaz gráfica")
     parser.add_argument("--watch", action="store_true",
                         help="Tras un comando, muestra el estado del robot")
     parser.add_argument("--logout", action="store_true", help="Borra credenciales guardadas")
+    parser.add_argument("--debug", action="store_true",
+                        help="Muestra el detalle de cada paso (diagnóstico de problemas)")
     args = parser.parse_args()
+
+    if args.debug:
+        logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(name)s: %(message)s")
 
     store = Store()
     if args.logout:
@@ -130,7 +161,10 @@ def main():
     robot = connect_robot(store, cloud, blid=args.blid)
 
     try:
-        if args.status:
+        if args.gui:
+            from .gui import RoombaGUI
+            RoombaGUI(robot).run()
+        elif args.status:
             robot.refresh_state()
             print()
             print(render_state(robot.snapshot()))

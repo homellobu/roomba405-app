@@ -30,3 +30,10 @@ def test_forget_all(tmp_path: Path):
     store.forget_all()
     assert store.email is None
     assert store.password is None
+
+
+def test_blid_roundtrip(tmp_path: Path):
+    store = Store(tmp_path / "config.json")
+    assert store.blid is None
+    store.set_blid("BLID123")
+    assert store.blid == "BLID123"
