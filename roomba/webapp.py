@@ -133,6 +133,13 @@ class _Handler(BaseHTTPRequestHandler):
                 self._json(200, {"ok": True, "robots": self.app.robots()})
             except Exception as e:
                 self._api_error(e)
+        elif path == "/api/trail":
+            if not self._backend_ready():
+                return
+            try:
+                self._json(200, {"ok": True, "trail": self.app.backend.get_trail()})
+            except Exception as e:
+                self._api_error(e)
         elif path == "/api/favorites":
             if not self._backend_ready():
                 return

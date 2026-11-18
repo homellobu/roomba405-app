@@ -15,6 +15,7 @@ class FakeBackend:
         self.favorites = [{"id": "F1", "name": "Noche", "steps": 2}]
         self.schedules = [{"id": "S1", "name": "Lunes", "enabled": True,
                            "time": "09:30", "days": "mon"}]
+        self.trail = []
         self.geojson = {
             "type": "FeatureCollection",
             "features": [{
@@ -54,6 +55,9 @@ class FakeBackend:
 
     def get_map(self):
         return self.geojson
+
+    def get_trail(self):
+        return self.trail
 
 
 @pytest.fixture()
@@ -218,3 +222,9 @@ def test_connecting_state():
         assert data["status"]["batPct"] == 80
     finally:
         app.shutdown()
+
+def test_trail_endpoint(server):
+    backend, url = server
+    assert get(url + "api/trail") == {"ok": True, "trail": []}
+    backend.trail = [[1.0, 2.0], [3.0, 4.0]]
+    assert get(url + "api/trail") == {"ok": True, "trail": [[1.0, 2.0], [3.0, 4.0]]}

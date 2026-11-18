@@ -1,4 +1,5 @@
 import asyncio
+from types import SimpleNamespace
 from dataclasses import dataclass, field
 
 from roomba.prime_backend import PrimeBackend
@@ -262,3 +263,19 @@ def test_get_rooms_falls_back_to_bundle_names():
     rooms = backend.get_rooms()
     assert rooms[0]["name"] == "Salón"
     assert rooms[0]["type"] == "RID"
+
+def test_trail_watch_collects_points():
+    backend = make_backend()
+
+    class Msg:
+        updates = [SimpleNamespace(point=(1.0, 2.0)),
+                   SimpleNamespace(point=(3.0, 4.0))]
+
+    async def watch():
+        yield Msg()
+
+    backend.robot.watch_live_map = watch
+    backend._trail_task = "started"
+    asyncio.run(backend._trail_watch())
+    assert backend._trail == [[1.0, 2.0], [3.0, 4.0]]
+    assert backend._trail_task is None

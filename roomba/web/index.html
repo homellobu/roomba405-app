@@ -332,6 +332,9 @@ const PHASES = {
 };
 let rooms = [];
 let favorites = [];
+let mapGeojson = null;
+let trailPts = [];
+let lastTrailLen = -1;
 
 function log(msg) {
   const box = $("log");
@@ -405,6 +408,13 @@ async function refresh() {
       $("side-robot").textContent = data.robot || "";
       updateStatus(data.status || {});
       if (!$("map-box").dataset.loaded) loadMap();
+      api("/api/trail").then(d => {
+        if (d.trail && d.trail.length && d.trail.length !== lastTrailLen) {
+          trailPts = d.trail;
+          lastTrailLen = d.trail.length;
+          if (mapGeojson) renderMap(mapGeojson);
+        }
+      }).catch(() => {});
     }
     if (!$("robot-select").dataset.loaded) {
       await loadRobots(data.blid);
@@ -419,6 +429,7 @@ async function refresh() {
 }
 
 function renderMap(geojson) {
+  if (geojson) mapGeojson = geojson;
   const box = $("map-box");
   if (!geojson || !Array.isArray(geojson.features)) {
     box.innerHTML = '<div class="empty">Sin mapa disponible todav\u00eda.<br>Deja que el robot limpie o mapee una vez.</div>';
@@ -470,12 +481,13 @@ function renderMap(geojson) {
   const pad = (Math.max(maxX - minX, maxY - minY) || 1) * 0.08;
   minX -= pad; maxX += pad; minY -= pad; maxY += pad;
   const W = maxX - minX, H = maxY - minY;
-  const stroke = Math.max(W, H) * 0.012;
+  const stroke = Math.max(W, H) * 0.005;
   const pathOf = (points) => points.map((pt, i) => {
     const p = flip(pt);
     return (i ? "L" : "M") + p[0].toFixed(3) + " " + p[1].toFixed(3);
   }).join(" ") + " Z";
   const roomParts = [], wallParts = [], zoneParts = [], dockParts = [], labelParts = [];
+  const trailParts = [];
   rooms.forEach(({rings, name}) => {
     rings.forEach((points, ri) => {
       roomParts.push('<path d="' + pathOf(points) + '" fill="#cde4f2" fill-opacity="0.9" stroke="#5f9ab3" stroke-width="' + stroke + '" stroke-linejoin="round" stroke-linecap="round"/>');
@@ -505,6 +517,15 @@ function renderMap(geojson) {
       zoneParts.push('<path d="' + pathOf(points) + '" fill="#f6ddd1" fill-opacity="0.55" stroke="#df8663" stroke-width="' + stroke + '" stroke-dasharray="' + (stroke * 2.5) + ' ' + (stroke * 1.5) + '"/>');
     });
   });
+  if (trailPts.length) {
+    const d = trailPts.map((pt, i) => {
+      const p = flip(pt);
+      return (i ? "L" : "M") + p[0].toFixed(3) + " " + p[1].toFixed(3);
+    }).join(" ");
+    trailParts.push('<path d="' + d + '" fill="none" stroke="#d87e5f" stroke-opacity="0.8" stroke-width="' + (stroke * 0.9) + '" stroke-linecap="round" stroke-linejoin="round"/>');
+    const last = flip(trailPts[trailPts.length - 1]);
+    trailParts.push('<circle cx="' + last[0].toFixed(3) + '" cy="' + last[1].toFixed(3) + '" r="' + (Math.max(W, H) * 0.016) + '" fill="#1d1d1f" stroke="#3192a5" stroke-width="' + (stroke * 1.4) + '"/>');
+  }
   docks.forEach(({pt}) => {
     const p = flip(pt);
     dockParts.push('<g transform="translate(' + p[0].toFixed(3) + ' ' + p[1].toFixed(3) + ')">'
@@ -512,7 +533,7 @@ function renderMap(geojson) {
       + '<circle r="' + (W * 0.007) + '" fill="#fff"/></g>');
   });
   box.innerHTML = '<svg viewBox="' + minX + ' ' + minY + ' ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" style="background:#f2f6f8; border-radius:10px;">'
-    + wallParts.join("") + roomParts.join("") + labelParts.join("") + zoneParts.join("") + dockParts.join("") + '</svg>';
+    + wallParts.join("") + roomParts.join("") + labelParts.join("") + zoneParts.join("") + trailParts.join("") + dockParts.join("") + '</svg>';
 }
 
 async function loadRobots(current) {

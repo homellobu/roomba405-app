@@ -25,6 +25,8 @@ class PrimeBackend:
         self._loop = None
         self._thread = None
         self._map_cache = None
+        self._trail = []
+        self._trail_task = None
         self._aiohttp_session = None
         self._started = threading.Event()
 
@@ -273,8 +275,59 @@ class PrimeBackend:
                     })
         return schedules
 
+    ACTIVE_PHASES = {"run", "pause", "hmUsrDock", "hmMidMsn", "hmPostMsn"}
+
     def get_status(self) -> dict:
-        return self._call(self._status_async())
+        status = self._call(self._status_async())
+        phase = (status.get("cleanMissionStatus") or {}).get("phase")
+        if phase in self.ACTIVE_PHASES:
+            self._ensure_trail()
+        else:
+            self._stop_trail()
+        return status
+
+    def get_trail(self) -> list:
+        return list(self._trail)
+
+    def _ensure_trail(self):
+        if self._loop is None:
+            return
+        if self._trail_task and not self._trail_task.done():
+            return
+
+        def start():
+            if self._trail_task and not self._trail_task.done():
+                return
+            self._trail.clear()
+            self._trail_task = self._loop.create_task(self._trail_watch())
+
+        self._loop.call_soon_threadsafe(start)
+
+    def _stop_trail(self):
+        if self._loop is None:
+            return
+        task = self._trail_task
+        self._trail_task = None
+        if task and not task.done():
+            self._loop.call_soon_threadsafe(task.cancel)
+
+    async def _trail_watch(self):
+        try:
+            async for msg in self.robot.watch_live_map():
+                updates = getattr(msg, "updates", None)
+                if not updates:
+                    continue
+                for sample in updates:
+                    point = getattr(sample, "point", None)
+                    if point and len(point) >= 2:
+                        self._trail.append([float(point[0]), float(point[1])])
+                del self._trail[:-2000]
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            log.warning("stream de posición terminado: %s", e)
+        finally:
+            self._trail_task = None
 
     async def _status_async(self) -> dict:
         state = {}
