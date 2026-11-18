@@ -279,3 +279,70 @@ def test_trail_watch_collects_points():
     asyncio.run(backend._trail_watch())
     assert backend._trail == [[1.0, 2.0], [3.0, 4.0]]
     assert backend._trail_task is None
+
+
+def test_get_status_unwraps_shadow_envelope():
+    class EnvelopeRobot(FakeRobot):
+        async def get_state(self):
+            return FakeShadow({"state": {"reported": {
+                "batPct": 77,
+                "cleanMissionStatus": {"phase": "run", "error": 0},
+            }}})
+
+        async def get_named_shadow(self, name):
+            return FakeShadow({"state": {"reported": {"bin": {"present": True}}}})
+
+    backend = make_backend()
+    backend.robot = EnvelopeRobot()
+    status = backend.get_status()
+    assert status["batPct"] == 77
+    assert status["cleanMissionStatus"]["phase"] == "run"
+    assert status["bin"] == {"present": True}
+
+
+def test_get_status_starts_and_stops_trail_by_phase():
+    calls = []
+
+    class RunRobot(FakeRobot):
+        async def get_state(self):
+            return FakeShadow({"cleanMissionStatus": {"phase": "run"}})
+
+        async def get_named_shadow(self, name):
+            return FakeShadow({})
+
+    class ChargeRobot(FakeRobot):
+        async def get_state(self):
+            return FakeShadow({"cleanMissionStatus": {"phase": "charge"}})
+
+        async def get_named_shadow(self, name):
+            return FakeShadow({})
+
+    backend = make_backend()
+    backend._ensure_trail = lambda: calls.append("ensure")
+    backend._stop_trail = lambda: calls.append("stop")
+    backend.robot = RunRobot()
+    backend.get_status()
+    assert calls == ["ensure"]
+    backend.robot = ChargeRobot()
+    backend.get_status()
+    assert calls == ["ensure", "stop"]
+
+
+def test_simple_start_starts_trail():
+    calls = []
+    backend = make_backend()
+    backend._ensure_trail = lambda: calls.append(True)
+    backend.simple("start")
+    assert calls == [True]
+    backend.simple("dock")
+    assert calls == [True]
+
+
+def test_trail_info_reports_state():
+    backend = make_backend()
+    backend._last_phase = "run"
+    backend._trail.append([1.0, 2.0])
+    backend._trail_error = "avierto"
+    assert backend.trail_info() == {
+        "active": False, "points": 1, "error": "avierto", "phase": "run",
+    }

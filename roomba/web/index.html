@@ -335,7 +335,16 @@ let favorites = [];
 let mapGeojson = null;
 let trailPts = [];
 let lastTrailLen = -1;
-let trailWarned = false;
+let lastTrailError = null;
+
+function noteTrailError(error) {
+  if (error && error !== lastTrailError) {
+    lastTrailError = error;
+    log("\u2717 Recorrido en vivo no disponible: " + error);
+  } else if (!error && lastTrailError) {
+    lastTrailError = null;
+  }
+}
 let wasConnecting = null;
 
 function log(msg) {
@@ -416,6 +425,7 @@ async function refresh() {
       }
       $("side-robot").textContent = data.robot || "";
       updateStatus(data.status || {});
+      if (data.trail) noteTrailError(data.trail.error);
     }
     if (!$("robot-select").dataset.loaded) {
       await loadRobots(data.blid);
@@ -698,10 +708,7 @@ async function trailTick() {
       lastTrailLen = d.trail.length;
       if (mapGeojson) renderMap(mapGeojson);
     }
-    if (!trailWarned && d.error) {
-      trailWarned = true;
-      log("\u2717 Recorrido en vivo no disponible: " + d.error);
-    }
+    noteTrailError(d.error);
   } catch (e) {}
 }
 

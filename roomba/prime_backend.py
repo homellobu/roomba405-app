@@ -11,7 +11,12 @@ WIRE_DAYS = ("sun", "mon", "tue", "wed", "thu", "fri", "sat")
 
 def _payload(response) -> dict:
     payload = getattr(response, "payload", None)
-    return payload if isinstance(payload, dict) else {}
+    if isinstance(payload, dict):
+        envelope = payload.get("state")
+        if isinstance(envelope, dict) and isinstance(envelope.get("reported"), dict):
+            return envelope["reported"]
+        return payload
+    return {}
 
 
 class PrimeBackend:
@@ -28,6 +33,7 @@ class PrimeBackend:
         self._trail = []
         self._trail_task = None
         self._trail_error = None
+        self._last_phase = None
         self._aiohttp_session = None
         self._started = threading.Event()
 
@@ -74,8 +80,12 @@ class PrimeBackend:
         )
         await self.robot.connect()
 
+    START_COMMANDS = {"start", "clean", "resume"}
+
     def simple(self, command: str):
         self._call(self.robot.send_simple_command(command))
+        if command in self.START_COMMANDS:
+            self._ensure_trail()
 
     def get_rooms(self) -> list[dict]:
         return self._call(self._rooms_async())
@@ -168,7 +178,9 @@ class PrimeBackend:
 
     def clean_rooms(self, rooms: list[dict], suction: str | None = None,
                     pad_wetness: int | None = None):
-        return self._call(self._clean_async(rooms, suction, pad_wetness))
+        result = self._call(self._clean_async(rooms, suction, pad_wetness))
+        self._ensure_trail()
+        return result
 
     async def _clean_async(self, rooms: list[dict], suction: str | None,
                            pad_wetness: int | None):
@@ -281,6 +293,7 @@ class PrimeBackend:
     def get_status(self) -> dict:
         status = self._call(self._status_async())
         phase = (status.get("cleanMissionStatus") or {}).get("phase")
+        self._last_phase = phase
         if phase in self.ACTIVE_PHASES:
             self._ensure_trail()
         else:
@@ -289,6 +302,14 @@ class PrimeBackend:
 
     def get_trail(self) -> list:
         return list(self._trail)
+
+    def trail_info(self) -> dict:
+        return {
+            "active": bool(self._trail_task and not self._trail_task.done()),
+            "points": len(self._trail),
+            "error": self._trail_error,
+            "phase": self._last_phase,
+        }
 
     def _ensure_trail(self):
         if self._loop is None:
@@ -314,6 +335,7 @@ class PrimeBackend:
             self._loop.call_soon_threadsafe(task.cancel)
 
     async def _trail_watch(self):
+        received = 0
         try:
             async for msg in self.robot.watch_live_map():
                 updates = getattr(msg, "updates", None)
@@ -323,6 +345,11 @@ class PrimeBackend:
                     point = getattr(sample, "point", None)
                     if point and len(point) >= 2:
                         self._trail.append([float(point[0]), float(point[1])])
+                        received += 1
+                        if received == 1:
+                            log.info("Recorrido en vivo: primer punto recibido")
+                        elif received % 50 == 0:
+                            log.info("Recorrido en vivo: %d puntos", received)
                 del self._trail[:-2000]
         except asyncio.CancelledError:
             raise

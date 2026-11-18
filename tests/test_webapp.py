@@ -59,6 +59,10 @@ class FakeBackend:
     def get_trail(self):
         return self.trail
 
+    def trail_info(self):
+        return {"active": False, "points": len(self.trail),
+                "error": None, "phase": "charge"}
+
 
 @pytest.fixture()
 def server():
@@ -129,6 +133,8 @@ def test_status_endpoint(server):
     data = get(url + "api/status")
     assert data["ok"] is True
     assert data["status"]["batPct"] == 80
+    assert data["trail"] == {"active": False, "points": 0,
+                             "error": None, "phase": "charge"}
     backend.fail_status = True
     try:
         get(url + "api/status")

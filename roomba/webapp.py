@@ -106,9 +106,11 @@ class _Handler(BaseHTTPRequestHandler):
                 self._no_backend(self.app.connect_error is None)
                 return
             try:
+                trail = getattr(self.app.backend, "trail_info", None)
                 self._json(200, {"ok": True, "robot": self.app.robot_name,
                                  "blid": self.app.blid,
-                                 "status": self.app.backend.get_status()})
+                                 "status": self.app.backend.get_status(),
+                                 "trail": trail() if callable(trail) else None})
             except Exception as e:
                 self._api_error(e)
         elif path == "/api/rooms":
