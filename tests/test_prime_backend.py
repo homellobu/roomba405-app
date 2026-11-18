@@ -92,6 +92,14 @@ class FakeRobot:
             {"type": "Feature", "id": "t1",
              "geometry": {"type": "LineString", "coordinates": [[0, 0], [1, 1]]},
              "properties": {"index": 0}}]}
+        covering_features = [
+            {"type": "Feature", "id": "c" + str(i),
+             "geometry": {"type": "Polygon",
+                          "coordinates": [[i, 0], [i + 0.5, 0], [i, 0.5]]},
+             "properties": {"operatingModes": ["run"]}}
+            for i in range(12)]
+        covering = {"type": "FeatureCollection", "features": covering_features}
+
         rooms = {"type": "FeatureCollection", "features": [
             {"type": "Feature", "id": "room1",
              "geometry": {"type": "Polygon", "coordinates": [
@@ -100,6 +108,7 @@ class FakeRobot:
         buf = io.BytesIO()
         with tarfile.open(fileobj=buf, mode="w:gz") as tar:
             for name, payload in (("trajectory.geojson", trajectory),
+                                  ("coverage.geojson", covering),
                                   ("rooms.geojson", rooms)):
                 data = jsonlib.dumps(payload).encode()
                 info = tarfile.TarInfo(name)
@@ -228,3 +237,4 @@ def test_get_map_prefers_file_with_polygons():
     assert len(geojson["features"]) == 1
     assert geojson["features"][0]["properties"]["name"] == "Salón"
     assert geojson["features"][0]["geometry"]["type"] == "Polygon"
+    assert len(geojson["features"]) == 1

@@ -108,23 +108,30 @@ class PrimeBackend:
         bundle = await self.robot.download_map_bundle(url)
         parsed = parse_map_bundle(bundle)
         best = None
-        best_score = -1
+        best_key = (-1, -1)
         fallback = None
         for content in parsed.values():
             if not (isinstance(content, dict) and isinstance(content.get("features"), list)):
                 continue
             if fallback is None:
                 fallback = content
-            score = sum(
-                1 for f in content["features"]
-                if isinstance(f, dict)
-                and ((f.get("geometry") or {}).get("type")
-                     in ("Polygon", "MultiPolygon"))
-            )
-            if score > best_score:
+            named = 0
+            polys = 0
+            for f in content["features"]:
+                if not isinstance(f, dict):
+                    continue
+                geom = (f.get("geometry") or {}).get("type")
+                if geom not in ("Polygon", "MultiPolygon"):
+                    continue
+                polys += 1
+                props = f.get("properties") or {}
+                if props.get("name") or props.get("NAME") or props.get("Name"):
+                    named += 1
+            key = (named, polys)
+            if key > best_key:
                 best = content
-                best_score = score
-        if best is not None and best_score > 0:
+                best_key = key
+        if best is not None and best_key[0] > 0:
             return best
         return fallback
 
