@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Roomba</title>
+<link rel="icon" type="image/png" href="/icon.png">
 <style>
   :root {
     --bg: #f5f6f8;
@@ -498,15 +499,66 @@ function renderMap(geojson) {
     const p = flip(pt);
     return (i ? "L" : "M") + p[0].toFixed(3) + " " + p[1].toFixed(3);
   }).join(" ") + " Z";
+  const segDist = (x, y, a, b) => {
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    const len2 = dx * dx + dy * dy || 1e-12;
+    let t = ((x - a[0]) * dx + (y - a[1]) * dy) / len2;
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    return Math.hypot(x - (a[0] + t * dx), y - (a[1] + t * dy));
+  };
+  const inRing = (x, y, ring) => {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const a = flip(ring[i]), b = flip(ring[j]);
+      if ((a[1] > y) !== (b[1] > y) &&
+          x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside;
+    }
+    return inside;
+  };
+  const visualCenter = (rings) => {
+    const outer = rings[0].map(flip);
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    outer.forEach(p => {
+      x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]);
+      x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]);
+    });
+    if (!isFinite(x0)) return [(x0 + x1) / 2, (y0 + y1) / 2];
+    const holes = rings.slice(1).map(h => h.map(flip));
+    const N = 28;
+    let best = [(x0 + x1) / 2, (y0 + y1) / 2], bestD = -1;
+    for (let i = 1; i < N; i++) {
+      for (let k = 1; k < N; k++) {
+        const x = x0 + (x1 - x0) * i / N;
+        const y = y0 + (y1 - y0) * k / N;
+        if (!inRing(x, y, outer)) continue;
+        if (holes.some(h => inRing(x, y, h))) continue;
+        let d = Infinity;
+        for (let vi = 0; vi < outer.length; vi++)
+          d = Math.min(d, segDist(x, y, outer[vi], outer[(vi + 1) % outer.length]));
+        for (const h of holes)
+          for (let vi = 0; vi < h.length; vi++)
+            d = Math.min(d, segDist(x, y, h[vi], h[(vi + 1) % h.length]));
+        if (d > bestD) { bestD = d; best = [x, y]; }
+      }
+    }
+    return best;
+  };
   const roomParts = [], wallParts = [], zoneParts = [], dockParts = [], labelParts = [];
   const trailParts = [];
   rooms.forEach(({rings, name}) => {
     rings.forEach((points, ri) => {
       roomParts.push('<path d="' + pathOf(points) + '" fill="#cde4f2" fill-opacity="0.9" stroke="#5f9ab3" stroke-width="' + stroke + '" stroke-linejoin="round" stroke-linecap="round"/>');
       if (ri === 0 && name) {
-        const cx = points.reduce((a, p) => a + p[0], 0) / points.length;
-        const cy = points.reduce((a, p) => a + p[1], 0) / points.length;
-        labelParts.push('<text x="' + cx.toFixed(3) + '" y="' + (-cy).toFixed(3) + '" text-anchor="middle" dominant-baseline="middle" font-size="' + (W * 0.045) + '" font-weight="600" fill="#33566a" font-family="inherit">' + String(name) + '</text>');
+        const c = visualCenter(rings);
+        let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+        rings[0].forEach(pt0 => {
+          const p = flip(pt0);
+          bx0 = Math.min(bx0, p[0]); by0 = Math.min(by0, p[1]);
+          bx1 = Math.max(bx1, p[0]); by1 = Math.max(by1, p[1]);
+        });
+        const fs = Math.max(stroke * 3, Math.min(W * 0.045,
+          (bx1 - bx0) / (0.62 * String(name).length), (by1 - by0) * 0.8));
+        labelParts.push('<text x="' + c[0].toFixed(3) + '" y="' + c[1].toFixed(3) + '" text-anchor="middle" dominant-baseline="middle" font-size="' + fs.toFixed(3) + '" font-weight="600" fill="#33566a" font-family="inherit">' + String(name) + '</text>');
       }
     });
   });
