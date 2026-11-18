@@ -400,12 +400,17 @@ async function refresh() {
     if (data.connecting) {
       setConn(false);
       $("conn-text").textContent = "Conectando con el robot…";
-      return;
+    } else {
+      $("side-robot").textContent = data.robot || "";
+      updateStatus(data.status || {});
+      if (!$("map-box").dataset.loaded) loadMap();
     }
-    $("side-robot").textContent = data.robot || "";
-    updateStatus(data.status || {});
-    if (!$("map-box").dataset.loaded) loadMap();
-    if (!$("robot-select").dataset.loaded) loadRobots(data.blid);
+    if (!$("robot-select").dataset.loaded) {
+      await loadRobots(data.blid);
+      if (!$("robot-select").dataset.loaded) {
+        log("✗ Selector de robots no disponible: reinicia la aplicación para actualizar");
+      }
+    }
   } catch (e) {
     setConn(false);
     $("phase").textContent = "—";
