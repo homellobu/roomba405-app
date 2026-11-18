@@ -107,12 +107,26 @@ class PrimeBackend:
             return None
         bundle = await self.robot.download_map_bundle(url)
         parsed = parse_map_bundle(bundle)
+        best = None
+        best_score = -1
+        fallback = None
         for content in parsed.values():
-            if isinstance(content, dict) and (
-                content.get("type") == "FeatureCollection" or "features" in content
-            ):
-                return content
-        return None
+            if not (isinstance(content, dict) and isinstance(content.get("features"), list)):
+                continue
+            if fallback is None:
+                fallback = content
+            score = sum(
+                1 for f in content["features"]
+                if isinstance(f, dict)
+                and ((f.get("geometry") or {}).get("type")
+                     in ("Polygon", "MultiPolygon"))
+            )
+            if score > best_score:
+                best = content
+                best_score = score
+        if best is not None and best_score > 0:
+            return best
+        return fallback
 
     async def _rooms_async(self) -> list[dict]:
         from roombapy_prime.models.robot_info import parse_active_map_versions

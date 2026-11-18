@@ -421,40 +421,51 @@ async function refresh() {
 function renderMap(geojson) {
   const box = $("map-box");
   if (!geojson || !Array.isArray(geojson.features)) {
-    box.innerHTML = '<div class="empty">Sin mapa disponible todavía.<br>Deja que el robot limpie o mapee una vez.</div>';
+    box.innerHTML = '<div class="empty">Sin mapa disponible todav\u00eda.<br>Deja que el robot limpie o mapee una vez.</div>';
     return;
   }
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  const polys = [];
+  const rooms = [];
+  const walls = [];
   geojson.features.forEach(f => {
     const g = f.geometry || {};
+    const props = f.properties || {};
     let rings = null;
     if (g.type === "Polygon") rings = g.coordinates;
     else if (g.type === "MultiPolygon") rings = g.coordinates.flat();
-    if (!rings) return;
-    rings.forEach(points => points.forEach(pt => {
-      if (pt[0] < minX) minX = pt[0];
-      if (pt[0] > maxX) maxX = pt[0];
-      if (pt[1] < minY) minY = pt[1];
-      if (pt[1] > maxY) maxY = pt[1];
-    }));
-    polys.push({f, rings});
+    else if (props.simplifiedGeometry && props.simplifiedGeometry.type === "Polygon") {
+      rings = props.simplifiedGeometry.coordinates;
+    }
+    if (!rings) {
+      if (g.type === "LineString") walls.push(g.coordinates);
+      else if (g.type === "MultiLineString") walls.push(...g.coordinates);
+      return;
+    }
+    const usable = rings.filter(r => r && r.length >= 3);
+    if (!usable.length) return;
+    rooms.push({f, props, rings: usable});
   });
-  if (!polys.length || !isFinite(minX)) {
-    box.innerHTML = '<div class="empty">El mapa aún no tiene habitaciones dibujadas.</div>';
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  rooms.forEach(r => r.rings.forEach(points => points.forEach(pt => track(pt))));
+  walls.forEach(points => points.forEach(pt => track(pt)));
+  function track(pt) {
+    if (pt[0] < minX) minX = pt[0];
+    if (pt[0] > maxX) maxX = pt[0];
+    if (pt[1] < minY) minY = pt[1];
+    if (pt[1] > maxY) maxY = pt[1];
+  }
+  if ((!rooms.length && !walls.length) || !isFinite(minX)) {
+    box.innerHTML = '<div class="empty">El mapa a\u00fan no tiene habitaciones dibujadas.</div>';
     return;
   }
   const pad = (Math.max(maxX - minX, maxY - minY) || 1) * 0.06;
   minX -= pad; maxX += pad; minY -= pad; maxY += pad;
   const W = maxX - minX, H = maxY - minY;
   const parts = [];
-  polys.forEach(({f, rings}) => {
+  rooms.forEach(({f, props, rings}) => {
     rings.forEach((points, ri) => {
-      if (!points || points.length < 3) return;
       const d = points.map((pt, i) => (i ? "L" : "M") + pt[0].toFixed(1) + " " + pt[1].toFixed(1)).join(" ") + " Z";
       parts.push('<path d="' + d + '" fill="#cfe3ee" fill-opacity="0.75" stroke="#7fb3cc" stroke-width="2" stroke-linejoin="round"/>');
       if (ri === 0) {
-        const props = f.properties || {};
         const name = props.name || props.NAME || props.Name;
         if (name && W > 0) {
           const cx = points.reduce((a, p) => a + p[0], 0) / points.length;
@@ -463,6 +474,11 @@ function renderMap(geojson) {
         }
       }
     });
+  });
+  walls.forEach(points => {
+    if (!points || points.length < 2) return;
+    const d = points.map((pt, i) => (i ? "L" : "M") + pt[0].toFixed(1) + " " + pt[1].toFixed(1)).join(" ");
+    parts.push('<path d="' + d + '" fill="none" stroke="#8fb9cc" stroke-width="' + Math.max(3, W * 0.004) + '" stroke-linecap="round"/>');
   });
   box.innerHTML = '<svg viewBox="' + minX + ' ' + minY + ' ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg">' + parts.join("") + '</svg>';
 }

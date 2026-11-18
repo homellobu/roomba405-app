@@ -19,6 +19,7 @@ class FakeRoom:
 @dataclass
 class FakeMetadata:
     rooms_metadata: list = field(default_factory=list)
+    current_map_version: str = "V1"
 
 
 @dataclass
@@ -78,6 +79,33 @@ class FakeRobot:
             FakeRoom("15", "Salón", FakeRegionType("RID")),
             FakeRoom("16", "Pasillo", "ZID"),
         ])
+
+    async def get_map_geojson_link(self, p2map_id, version_id):
+        return {"map_url": "https://example.com/map.tar.gz"}
+
+    async def download_map_bundle(self, url):
+        assert url == "https://example.com/map.tar.gz"
+        import io
+        import json as jsonlib
+        import tarfile
+        trajectory = {"type": "FeatureCollection", "features": [
+            {"type": "Feature", "id": "t1",
+             "geometry": {"type": "LineString", "coordinates": [[0, 0], [1, 1]]},
+             "properties": {"index": 0}}]}
+        rooms = {"type": "FeatureCollection", "features": [
+            {"type": "Feature", "id": "room1",
+             "geometry": {"type": "Polygon", "coordinates": [
+                 [[0, 0], [8, 0], [8, 6], [0, 6], [0, 0]]]},
+             "properties": {"name": "Salón", "type": "kitchen"}}]}
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode="w:gz") as tar:
+            for name, payload in (("trajectory.geojson", trajectory),
+                                  ("rooms.geojson", rooms)):
+                data = jsonlib.dumps(payload).encode()
+                info = tarfile.TarInfo(name)
+                info.size = len(data)
+                tar.addfile(info, io.BytesIO(data))
+        return buf.getvalue()
 
     async def send_routine_command_via_cmd_topic(self, command):
         self.sent.append(command)
@@ -192,3 +220,11 @@ def test_get_status_merges_shadows():
     backend.robot = ShadowRobot()
     status = backend.get_status()
     assert status == {"sku": "G185040", "batPct": 88}
+
+def test_get_map_prefers_file_with_polygons():
+    backend = make_backend()
+    geojson = backend.get_map()
+    assert geojson["type"] == "FeatureCollection"
+    assert len(geojson["features"]) == 1
+    assert geojson["features"][0]["properties"]["name"] == "Salón"
+    assert geojson["features"][0]["geometry"]["type"] == "Polygon"
