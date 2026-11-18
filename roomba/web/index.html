@@ -336,6 +336,7 @@ let mapGeojson = null;
 let trailPts = [];
 let lastTrailLen = -1;
 let trailWarned = false;
+let wasConnecting = null;
 
 function log(msg) {
   const box = $("log");
@@ -403,23 +404,18 @@ async function refresh() {
   try {
     const data = await api("/api/status");
     if (data.connecting) {
+      wasConnecting = true;
       setConn(false);
       $("conn-text").textContent = "Conectando con el robot…";
     } else {
+      if (wasConnecting) {
+        wasConnecting = false;
+        delete $("map-box").dataset.loaded;
+        loadMap();
+        loadRooms();
+      }
       $("side-robot").textContent = data.robot || "";
       updateStatus(data.status || {});
-      if (!$("map-box").dataset.loaded) loadMap();
-      api("/api/trail").then(d => {
-        if (d.trail && d.trail.length && d.trail.length !== lastTrailLen) {
-          trailPts = d.trail;
-          lastTrailLen = d.trail.length;
-          if (mapGeojson) renderMap(mapGeojson);
-        }
-        if (!trailWarned && d.error) {
-          trailWarned = true;
-          log("\u2717 Recorrido en vivo no disponible: " + d.error);
-        }
-      }).catch(() => {});
     }
     if (!$("robot-select").dataset.loaded) {
       await loadRobots(data.blid);
@@ -428,6 +424,7 @@ async function refresh() {
       }
     }
   } catch (e) {
+    wasConnecting = true;
     setConn(false);
     $("phase").textContent = "—";
   }
@@ -610,7 +607,7 @@ $("robot-select").addEventListener("change", async () => {
   refresh();
 });
 
-$("btn-load-rooms").addEventListener("click", async () => {
+async function loadRooms() {
   try {
     const data = await api("/api/rooms");
     rooms = data.rooms || [];
@@ -626,9 +623,11 @@ $("btn-load-rooms").addEventListener("click", async () => {
         '<span class="kind">' + (r.type === "RID" ? "habitación" : "zona") + '</span>';
       ul.appendChild(li);
     });
-    log("✓ " + rooms.length + " habitación(es)/zona(s) cargadas");
+    log("✓ Habitaciones cargadas: " + rooms.length);
   } catch (e) { log("✗ No se pudieron cargar habitaciones: " + e.message); }
-});
+}
+
+$("btn-load-rooms").addEventListener("click", loadRooms);
 
 $("btn-clean-rooms").addEventListener("click", async () => {
   const chosen = [...document.querySelectorAll("#rooms-list input:checked")].map(cb => rooms[cb.dataset.i].name);
@@ -691,8 +690,24 @@ $("btn-load-scheds").addEventListener("click", async () => {
   } catch (e) { log("✗ No se pudieron cargar programaciones: " + e.message); }
 });
 
+async function trailTick() {
+  try {
+    const d = await api("/api/trail");
+    if (d.trail && d.trail.length && d.trail.length !== lastTrailLen) {
+      trailPts = d.trail;
+      lastTrailLen = d.trail.length;
+      if (mapGeojson) renderMap(mapGeojson);
+    }
+    if (!trailWarned && d.error) {
+      trailWarned = true;
+      log("\u2717 Recorrido en vivo no disponible: " + d.error);
+    }
+  } catch (e) {}
+}
+
 refresh();
 setInterval(refresh, 8000);
+setInterval(trailTick, 2000);
 </script>
 </body>
 </html>
