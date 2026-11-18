@@ -8,6 +8,7 @@ from pathlib import Path
 
 ERROR_LOG = Path.home() / ".roomba_app" / "ultimo_error.txt"
 STEP_LOG = Path.home() / ".roomba_app" / "launcher.log"
+HEADLESS = "--headless" in sys.argv
 
 
 def log_step(message: str):
@@ -62,7 +63,7 @@ def open_interface(app):
         wait_forever()
 
 
-def run():
+def run(headless: bool = False):
     from roomba.cli import login_flow, resolve_blid
     from roomba.cloud import IRobotCloud
     from roomba.prime_backend import PrimeBackend
@@ -76,6 +77,9 @@ def run():
     log_step("login en iRobot")
     session = login_flow(store, cloud)
     blid = resolve_blid(store, session)
+    if blid is None and headless:
+        raise RuntimeError(
+            "sin robot guardado: abre la app de escritorio una vez y elige un robot")
     if blid is None:
         from roomba.gui import pick_robot_dialog
         blid = pick_robot_dialog(session["robots"])
@@ -140,18 +144,35 @@ def run():
             log_step("fallo al conectar con el robot")
 
     threading.Thread(target=connect, daemon=True).start()
+    if headless:
+        if app.lan_server is None:
+            lan_url = app.lan_enable()
+            log_step(f"acceso iPhone/iPad activo en {lan_url}" if lan_url
+                     else "no se pudo abrir el acceso para iPhone/iPad")
+        log_step("servicio sin ventana en marcha")
+        try:
+            while True:
+                time.sleep(3600)
+        except KeyboardInterrupt:
+            pass
+        finally:
+            backend.close()
+        return
     open_interface(app)
     backend.close()
 
 
 try:
-    run()
+    run(headless=HEADLESS)
 except SystemExit:
     raise
 except BaseException:
     error = traceback.format_exc()
     summary = save_and_summarize(error)
     log_step("ERROR FATAL:\n" + error)
+    if HEADLESS:
+        print(error, file=sys.stderr)
+        sys.exit(1)
     try:
         import tkinter as tk
         from tkinter import messagebox

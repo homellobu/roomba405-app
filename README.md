@@ -135,6 +135,28 @@ diseño de referencia) servida solo en tu máquina (`127.0.0.1`); si falta
 La app usa el mismo entorno virtual del proyecto, así que actualiza con
 `git pull` y vuelve a ejecutar el script si cambias de versión.
 
+## Uso desde iPhone o iPad
+
+En la barra lateral de la app hay un interruptor **"iPhone y iPad"**: al
+activarlo aparece una dirección del tipo `http://192.168.x.x:8787`. Abre esa
+dirección en Safari del iPad (misma WiFi) y, si quieres que funcione como
+app, comparte → **Añadir a pantalla de inicio**.
+
+Para que el iPad funcione **sin tener que abrir nada en el Mac**, instala el
+servicio de fondo:
+
+```bash
+bash scripts/install_service.sh
+```
+
+- Arranca solo al encender el Mac y se reinicia solo si se cae.
+- Log del servicio: `~/.roomba_app/service.log`; para quitarlo:
+  `bash scripts/install_service.sh --uninstall`.
+- Requiere sesión iniciada en el Mac (lo normal en un Mac Mini doméstico) y
+  un robot ya guardado (abre la app de escritorio una vez y elige robot).
+- Con el servicio activo puedes seguir usando Roomba.app en el Mac como
+  siempre.
+
 ## Diagnóstico de problemas
 
 Si el robot no responde o algo falla, ejecuta con `--debug` para ver en qué
